@@ -27,6 +27,7 @@ StockLab sekarang direvisi menjadi `Telegram-based IHSG Alert Engine`, bukan das
 - `Unusual activity detector`: alert aktivitas harga/volume yang tidak biasa pada universe market yang aktif
 - `Daily market summary`: summary pagi dan end-of-day ke Telegram
 - `Telegram notifier`: formatting rapi, emoji per alert type, retry, logging, dan manual trigger dari admin
+- `Telegram command bot`: control plane ringan untuk menjalankan job dan cek status langsung dari Telegram
 - `Anti-spam`: dedup harian, severity filter, dan limit alert otomatis per hari
 - `Selective market ingestion`: hanya fetch harga untuk saham watchlist, event aktif, dan priority/liquid universe harian
 - `Admin panel`: observability event, update, alert, job run, watchlist rules, dan tombol trigger manual
@@ -117,16 +118,46 @@ python main.py --mode worker
 - `Run morning summary`
 - `Run EOD summary`
 
+## Telegram Bot Commands
+
+- `/help`
+- `/status`
+- `/collect_symbols`
+- `/collect_events`
+- `/collect_market`
+- `/collect_all`
+- `/dividend_alerts`
+- `/corporate_actions`
+- `/watchlist_alerts`
+- `/unusual_activity`
+- `/summary_morning`
+- `/summary_eod`
+- `/watchlist_show`
+- `/watchlist_help`
+- `/watchlist_add BBCA price_above > 10000`
+- `/watchlist_update 1 BBCA price_above > 10200 0 high on`
+- `/watchlist_delete 1`
+- `/watchlist_enable 1`
+- `/watchlist_disable 1`
+- `/menu`
+
+Bot juga mendukung `inline buttons` untuk operasi cepat, jadi Anda tidak harus mengetik command manual setiap kali.
+Menu tombol sekarang bertingkat: `System`, `Collect`, `Alerts`, `Summary`, dan `Watchlist`.
+
 ## Entry point sederhana
 
 - `python main.py --mode bootstrap`
   - inisialisasi DB lalu jalankan `collect-symbols`, `collect-events`, dan `collect-market`
 - `python main.py --mode worker`
   - jalankan scheduler saja
+- `python main.py --mode bot`
+  - jalankan Telegram command bot saja
+- `python main.py --mode ops`
+  - jalankan scheduler + Telegram command bot
 - `python main.py --mode admin`
   - jalankan admin panel saja
 - `python main.py --mode all-in-one`
-  - jalankan scheduler + admin panel dalam satu command
+  - jalankan scheduler + Telegram command bot + admin panel dalam satu command
 
 ## Deploy ke VPS production
 
@@ -157,12 +188,16 @@ Gunakan `.env`:
 ```dotenv
 TELEGRAM_BOT_TOKEN=replace_me
 TELEGRAM_CHAT_ID=replace_me
+TELEGRAM_COMMANDS_ENABLED=true
+TELEGRAM_COMMAND_CHAT_IDS=-5168829564
 WATCHLIST_RULES_PATH=data/watchlist_rules.json
 MARKET_PRIORITY_SYMBOLS_PATH=data/bootstrap_symbols.csv
 MARKET_PRIORITY_LIMIT=100
 ```
 
 Credential tidak di-hardcode di source code final.
+
+`TELEGRAM_COMMAND_CHAT_IDS` membatasi chat mana yang boleh menjalankan command bot. Untuk harian, admin panel jadi opsional kalau command Telegram ini sudah cukup.
 
 ## Sumber event production
 
