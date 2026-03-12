@@ -7,6 +7,13 @@ import time
 from html import escape
 
 from stocklab.config import get_settings
+from stocklab.jobs.alerts import (
+    run_corporate_action_alerts_manual,
+    run_dividend_alerts_manual,
+    run_market_summary_manual,
+    run_unusual_activity_alerts_manual,
+    run_watchlist_alerts_manual,
+)
 from stocklab.jobs.runner import run_job
 from stocklab.notifiers.telegram import get_telegram_updates, safe_answer_callback_query, send_telegram_message
 from stocklab.storage.db import init_db
@@ -94,12 +101,15 @@ COMMAND_TO_JOB = {
     "collect_events": ("collect-events", None),
     "collect_market": ("collect-market", None),
     "collect_all": ("collect-all", None),
-    "dividend_alerts": ("dividend-alerts", None),
-    "corporate_actions": ("corporate-actions", None),
-    "watchlist_alerts": ("watchlist-alerts", None),
-    "unusual_activity": ("unusual-activity", None),
-    "summary_morning": ("market-summary", "morning"),
-    "summary_eod": ("market-summary", "eod"),
+}
+
+MANUAL_ALERT_COMMANDS = {
+    "dividend_alerts": run_dividend_alerts_manual,
+    "corporate_actions": run_corporate_action_alerts_manual,
+    "watchlist_alerts": run_watchlist_alerts_manual,
+    "unusual_activity": run_unusual_activity_alerts_manual,
+    "summary_morning": lambda: run_market_summary_manual("morning"),
+    "summary_eod": lambda: run_market_summary_manual("eod"),
 }
 
 MENU_TEXT = {
@@ -230,6 +240,9 @@ def _dispatch_command(command_text: str) -> tuple[str, dict | None]:
         return _handle_watchlist_toggle(args, True), _menu_keyboard("watchlist")
     if command == "watchlist_disable":
         return _handle_watchlist_toggle(args, False), _menu_keyboard("watchlist")
+    if command in MANUAL_ALERT_COMMANDS:
+        sent = MANUAL_ALERT_COMMANDS[command]()
+        return _format_manual_alert_result(command, sent), _result_keyboard(command)
     if command in COMMAND_TO_JOB:
         job_name, session = COMMAND_TO_JOB[command]
         result = run_job(job_name, session=session)
@@ -294,6 +307,26 @@ def _format_job_result(command: str, result: dict) -> str:
             f"• Command: <code>/{command}</code>",
             f"• Status: <code>{result.get('status', '-')}</code>",
             f"• Notes: <code>{json.dumps(result.get('notes', ''), default=str)[:1500]}</code>",
+        ]
+    )
+
+
+def _format_manual_alert_result(command: str, sent: int) -> str:
+    if sent > 0:
+        return "\n".join(
+            [
+                "<b>✅ StockLab Command</b>",
+                "────────────",
+                f"• Command: <code>/{command}</code>",
+                f"• Result: <code>{sent} alert(s) sent</code>",
+            ]
+        )
+    return "\n".join(
+        [
+            "<b>ℹ️ StockLab Command</b>",
+            "────────────",
+            f"• Command: <code>/{command}</code>",
+            "• Result: <code>No alert matched</code>",
         ]
     )
 
