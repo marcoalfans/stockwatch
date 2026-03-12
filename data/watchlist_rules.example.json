@@ -1,0 +1,38 @@
+[
+  {
+    "symbol": "BBCA",
+    "rule_type": "price_above",
+    "operator": ">",
+    "threshold_value": 10000,
+    "lookback_days": 0,
+    "priority": "high",
+    "enabled": true
+  },
+  {
+    "symbol": "ANTM",
+    "rule_type": "volume_multiple_gt",
+    "operator": ">=",
+    "threshold_value": 2.0,
+    "lookback_days": 20,
+    "priority": "medium",
+    "enabled": true
+  },
+  {
+    "symbol": "TLKM",
+    "rule_type": "ex_date_within_days",
+    "operator": "<=",
+    "threshold_value": 3,
+    "lookback_days": 0,
+    "priority": "high",
+    "enabled": true
+  },
+  {
+    "symbol": "PTBA",
+    "rule_type": "breakout_20d_high",
+    "operator": ">=",
+    "threshold_value": 1,
+    "lookback_days": 20,
+    "priority": "high",
+    "enabled": true
+  }
+]

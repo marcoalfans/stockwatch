@@ -1,0 +1,6 @@
+symbol,company_name,sector,cum_date,ex_date,recording_date,payment_date,dividend_per_share,estimated_yield
+BMRI,Bank Mandiri Tbk,Financials,2026-03-17,2026-03-18,2026-03-19,2026-04-07,466,6.8
+UNTR,United Tractors Tbk,Energy,2026-03-15,2026-03-16,2026-03-17,2026-03-30,2100,8.5
+ASII,Astra International Tbk,Industrials,2026-03-21,2026-03-22,2026-03-23,2026-04-12,310,6.0
+TLKM,Telkom Indonesia Tbk,Infrastructure,2026-03-24,2026-03-25,2026-03-26,2026-04-14,178,4.6
+BBCA,Bank Central Asia Tbk,Financials,2026-03-19,2026-03-20,2026-03-21,2026-04-10,120,1.3

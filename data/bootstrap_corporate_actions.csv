@@ -1,0 +1,5 @@
+symbol,company_name,event_type,title,announcement_date,effective_date,cum_date,ex_date,recording_date,payment_date,value_per_share,source_url
+BBCA,Bank Central Asia Tbk,dividend,Final Dividend 2025,2026-03-11,,2026-04-18,2026-04-19,2026-04-22,2026-04-25,270,https://example.com/bbca-dividend
+EXCL,XL Axiata Tbk,rights_issue,Rights Issue 2026,2026-03-10,2026-04-12,,,,,,https://example.com/excl-rights
+TOWR,Sarana Menara Nusantara Tbk,buyback,Buyback Program 2026,2026-03-12,2026-03-20,,,,,,https://example.com/towr-buyback
+GOTO,GoTo Gojek Tokopedia Tbk,rups,RUPS Tahunan 2026,2026-03-09,2026-04-28,,,,,,https://example.com/goto-rups
