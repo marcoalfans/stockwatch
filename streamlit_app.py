@@ -40,6 +40,7 @@ WATCHLIST_RULE_TYPES = [
 ]
 WATCHLIST_OPERATORS = [">", ">=", "<", "<="]
 WATCHLIST_PRIORITIES = ["high", "medium", "low"]
+VALID_SYMBOLS: set[str] = set()
 
 
 def _load_watchlist_rules(path: Path, repo: StockLabRepository) -> pd.DataFrame:
@@ -70,6 +71,7 @@ def _normalize_watchlist_rules(frame: pd.DataFrame) -> pd.DataFrame:
 
     working = working[
         working["symbol"].ne("")
+        & working["symbol"].isin(VALID_SYMBOLS or set(working["symbol"].tolist()))
         & working["rule_type"].isin(WATCHLIST_RULE_TYPES)
         & working["operator"].isin(WATCHLIST_OPERATORS)
         & working["priority"].isin(WATCHLIST_PRIORITIES)
@@ -88,6 +90,8 @@ st.set_page_config(page_title="StockLab Admin", page_icon="SL", layout="wide")
 init_db()
 repo = StockLabRepository()
 settings = get_settings()
+symbol_options = repo.get_symbols()["symbol"].dropna().astype(str).str.strip().sort_values().tolist()
+VALID_SYMBOLS = set(symbol_options)
 
 st.title("StockLab Admin")
 st.caption("Telegram-first IHSG alert engine. Admin panel ini hanya untuk observability dan operasi dasar.")
@@ -157,7 +161,7 @@ with tab5:
         hide_index=True,
         num_rows="dynamic",
         column_config={
-            "symbol": st.column_config.TextColumn("Symbol", required=True),
+            "symbol": st.column_config.SelectboxColumn("Symbol", options=symbol_options, required=True),
             "rule_type": st.column_config.SelectboxColumn("Rule Type", options=WATCHLIST_RULE_TYPES, required=True),
             "operator": st.column_config.SelectboxColumn("Operator", options=WATCHLIST_OPERATORS, required=True),
             "threshold_value": st.column_config.NumberColumn("Threshold", required=True),
