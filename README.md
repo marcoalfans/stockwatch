@@ -82,7 +82,7 @@ Catatan:
 ## Menjalankan
 
 ```bash
-cd /home/kac0/project/stocklab
+cd /home/kac0/project/stockwatch
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -e .
@@ -172,7 +172,7 @@ Menu tombol sekarang bertingkat: `System`, `Collect`, `Alerts`, `Summary`, dan `
 Paling sederhana:
 
 ```bash
-cd /opt/stocklab
+cd /opt/stockwatch
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -e .
