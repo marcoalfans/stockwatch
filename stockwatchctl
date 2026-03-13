@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+VENV_PYTHON="$ROOT_DIR/.venv/bin/python"
+
+if [[ ! -x "$VENV_PYTHON" ]]; then
+  echo "Missing virtualenv at $ROOT_DIR/.venv"
+  echo "Run: python3 -m venv .venv && source .venv/bin/activate && python -m pip install -e ."
+  exit 1
+fi
+
+if [[ $# -eq 0 ]]; then
+  exec "$VENV_PYTHON" "$ROOT_DIR/main.py" --mode all-in-one
+fi
+
+case "$1" in
+  all-in-one|worker|bot|ops|admin|bootstrap)
+    mode="$1"
+    shift
+    exec "$VENV_PYTHON" "$ROOT_DIR/main.py" --mode "$mode" "$@"
+    ;;
+  job)
+    shift
+    exec "$VENV_PYTHON" "$ROOT_DIR/run_jobs.py" "$@"
+    ;;
+  python)
+    shift
+    exec "$VENV_PYTHON" "$@"
+    ;;
+  *)
+    echo "Usage:"
+    echo "  ./stockwatchctl                     # run all-in-one"
+    echo "  ./stockwatchctl all-in-one"
+    echo "  ./stockwatchctl worker"
+    echo "  ./stockwatchctl bot"
+    echo "  ./stockwatchctl ops"
+    echo "  ./stockwatchctl admin --port 8501"
+    echo "  ./stockwatchctl bootstrap"
+    echo "  ./stockwatchctl job collect-all"
+    echo "  ./stockwatchctl python -c 'import stockwatch'"
+    exit 1
+    ;;
+esac

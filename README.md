@@ -85,17 +85,25 @@ Catatan:
 cd /home/kac0/project/stockwatch
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -e .
+python -m pip install -e .
 cp .env.example .env
-python main.py --mode bootstrap
-python main.py --mode all-in-one
+./stockwatchctl bootstrap
+./stockwatchctl
 ```
+
+Cara paling simple setelah setup:
+
+```bash
+cd /home/kac0/project/stockwatch
+./stockwatchctl
+```
+
+Tanpa activate shell manual, script ini akan langsung memakai interpreter project di `.venv`.
 
 ## Menjalankan scheduler
 
 ```bash
-source .venv/bin/activate
-python main.py --mode worker
+./stockwatchctl worker
 ```
 
 ## Job yang tersedia
@@ -154,17 +162,19 @@ Menu tombol sekarang bertingkat: `System`, `Collect`, `Alerts`, `Summary`, dan `
 
 ## Entry point sederhana
 
-- `python main.py --mode bootstrap`
+- `./stockwatchctl bootstrap`
   - inisialisasi DB lalu jalankan `collect-symbols`, `collect-events`, dan `collect-market`
-- `python main.py --mode worker`
+- `./stockwatchctl worker`
   - jalankan scheduler saja
-- `python main.py --mode bot`
+- `./stockwatchctl bot`
   - jalankan Telegram command bot saja
-- `python main.py --mode ops`
+- `./stockwatchctl ops`
   - jalankan scheduler + Telegram command bot
-- `python main.py --mode admin`
+- `./stockwatchctl admin`
   - jalankan admin panel saja
-- `python main.py --mode all-in-one`
+- `./stockwatchctl`
+  - default = `all-in-one`
+- `./stockwatchctl all-in-one`
   - jalankan scheduler + Telegram command bot + admin panel dalam satu command
 
 ## Deploy ke VPS production
@@ -175,17 +185,17 @@ Paling sederhana:
 cd /opt/stockwatch
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -e .
+python -m pip install -e .
 cp .env.example .env
 nano .env
-python main.py --mode bootstrap
-python main.py --mode all-in-one
+./stockwatchctl bootstrap
+./stockwatchctl
 ```
 
 Untuk production yang lebih rapi, gunakan `systemd` dan biasanya pisahkan:
 
-- `stockwatch-worker`: `python main.py --mode worker`
-- `stockwatch-admin`: `python main.py --mode admin --port 8501`
+- `stockwatch-worker`: `./stockwatchctl worker`
+- `stockwatch-admin`: `./stockwatchctl admin --port 8501`
 
 `all-in-one` saya sediakan untuk kemudahan single-command, tetapi secara operasional 2 service tetap lebih kuat karena restart dan observability lebih bersih.
 
