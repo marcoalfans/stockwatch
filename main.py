@@ -9,12 +9,14 @@ import time
 from pathlib import Path
 
 from stockwatch.bot.commands import run_bot_listener
+from stockwatch.config import get_settings
 
 
 BASE_DIR = Path(__file__).resolve().parent
 
 
 def main() -> None:
+    settings = get_settings()
     parser = argparse.ArgumentParser(description="StockWatch main launcher")
     parser.add_argument(
         "--mode",
@@ -22,7 +24,7 @@ def main() -> None:
         default="worker",
         help="worker = scheduler only, bot = telegram commands only, ops = scheduler + bot, admin = streamlit only, all-in-one = scheduler + bot + admin, bootstrap = init-db + collect-symbols + collect-events + collect-market",
     )
-    parser.add_argument("--port", type=int, default=8501, help="Admin panel port")
+    parser.add_argument("--port", type=int, default=settings.admin_port, help="Admin panel port")
     args = parser.parse_args()
 
     if args.mode == "bootstrap":

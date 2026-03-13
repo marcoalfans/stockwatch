@@ -16,6 +16,7 @@ load_dotenv(BASE_DIR / ".env")
 class Settings:
     env: str
     db_path: Path
+    admin_port: int
     telegram_bot_token: str
     telegram_chat_id: str
     telegram_enabled: bool
@@ -34,6 +35,7 @@ def get_settings() -> Settings:
     return Settings(
         env=os.getenv("STOCKWATCH_ENV", "dev"),
         db_path=BASE_DIR / os.getenv("STOCKWATCH_DB_PATH", "data/stockwatch.db"),
+        admin_port=int(os.getenv("STOCKWATCH_ADMIN_PORT", "8501")),
         telegram_bot_token=os.getenv("TELEGRAM_BOT_TOKEN", ""),
         telegram_chat_id=os.getenv("TELEGRAM_CHAT_ID", ""),
         telegram_enabled=os.getenv("TELEGRAM_ENABLED", "false").lower() == "true",

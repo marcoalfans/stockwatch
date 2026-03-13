@@ -99,6 +99,7 @@ cd /home/kac0/project/stockwatch
 ```
 
 Tanpa activate shell manual, script ini akan langsung memakai interpreter project di `.venv`.
+Port admin bisa disimpan di `.env` lewat `STOCKWATCH_ADMIN_PORT`. Jika tidak diisi, default tetap `8501`.
 
 ## Menjalankan scheduler
 
@@ -208,6 +209,7 @@ TELEGRAM_BOT_TOKEN=replace_me
 TELEGRAM_CHAT_ID=replace_me
 TELEGRAM_COMMANDS_ENABLED=true
 TELEGRAM_COMMAND_CHAT_IDS=-5168829564
+STOCKWATCH_ADMIN_PORT=8501
 WATCHLIST_RULES_PATH=data/watchlist_rules.json
 MARKET_PRIORITY_SYMBOLS_PATH=data/bootstrap_symbols.csv
 MARKET_PRIORITY_LIMIT=100
