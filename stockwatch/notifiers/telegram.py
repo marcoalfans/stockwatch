@@ -40,6 +40,25 @@ def send_telegram_message(
     return telegram_api_request("sendMessage", payload)
 
 
+def edit_telegram_message(
+    text: str,
+    message_id: int,
+    chat_id: str,
+    parse_mode: str = "HTML",
+    reply_markup: dict | None = None,
+) -> dict:
+    payload: dict[str, object] = {
+        "chat_id": str(chat_id),
+        "message_id": int(message_id),
+        "text": text,
+        "parse_mode": parse_mode,
+        "disable_web_page_preview": True,
+    }
+    if reply_markup:
+        payload["reply_markup"] = reply_markup
+    return telegram_api_request("editMessageText", payload)
+
+
 def get_telegram_updates(offset: int | None = None, timeout: int = 30) -> dict:
     payload: dict[str, object] = {"timeout": timeout, "allowed_updates": ["message", "callback_query"]}
     if offset is not None:

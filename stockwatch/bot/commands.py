@@ -17,6 +17,7 @@ from stockwatch.jobs.alerts import (
 from stockwatch.jobs.runner import run_job
 from stockwatch.notifiers.telegram import (
     TelegramRateLimitError,
+    edit_telegram_message,
     get_telegram_updates,
     safe_answer_callback_query,
     send_telegram_message,
@@ -242,11 +243,49 @@ def _handle_callback_query(callback_query: dict) -> None:
     command = str(callback_query.get("data", "")).strip().lower()
     notice = "Opened menu" if command.startswith("menu:") else "Running..."
     safe_answer_callback_query(callback_query["id"], text=notice)
+    if _is_long_running_command(command):
+        _send_command_response_with_progress(chat_id, command)
+        return
     _send_command_response(chat_id, command)
 
 
 def _send_command_response(chat_id: str, command_text: str) -> None:
     response_text, keyboard = _dispatch_command(command_text)
+    try:
+        send_telegram_message(response_text, chat_id=chat_id, reply_markup=keyboard)
+    except TelegramRateLimitError as exc:
+        logger.warning("Telegram rate limit while responding to command %s: retry_after=%s", command_text, exc.retry_after)
+
+
+def _send_command_response_with_progress(chat_id: str, command_text: str) -> None:
+    processing_text = _build_processing_message(command_text)
+    keyboard = _result_keyboard(command_text)
+    processing_message_id: int | None = None
+
+    try:
+        response = send_telegram_message(processing_text, chat_id=chat_id, reply_markup=keyboard)
+        processing_message_id = int(response.get("result", {}).get("message_id", 0)) or None
+    except TelegramRateLimitError as exc:
+        logger.warning(
+            "Telegram rate limit while sending progress indicator for command %s: retry_after=%s",
+            command_text,
+            exc.retry_after,
+        )
+
+    response_text, keyboard = _dispatch_command(command_text)
+    if processing_message_id is not None:
+        try:
+            edit_telegram_message(response_text, message_id=processing_message_id, chat_id=chat_id, reply_markup=keyboard)
+            return
+        except TelegramRateLimitError as exc:
+            logger.warning(
+                "Telegram rate limit while editing progress indicator for command %s: retry_after=%s",
+                command_text,
+                exc.retry_after,
+            )
+        except Exception:
+            logger.exception("Failed to edit progress indicator for command %s", command_text)
+
     try:
         send_telegram_message(response_text, chat_id=chat_id, reply_markup=keyboard)
     except TelegramRateLimitError as exc:
@@ -511,6 +550,40 @@ def _format_job_result(command: str, result: dict) -> str:
             f"• Notes: <code>{json.dumps(result.get('notes', ''), default=str)[:1500]}</code>",
         ]
     )
+
+
+def _build_processing_message(command: str) -> str:
+    label = _command_label(command)
+    return "\n".join(
+        [
+            "<b>⏳ StockWatch Command</b>",
+            "────────────",
+            f"• Command: <code>/{escape(command)}</code>",
+            f"• Action: <code>{escape(label)}</code>",
+            "• Status: <code>running</code>",
+            "• Notes: <code>Proses sedang berjalan, mohon tunggu...</code>",
+        ]
+    )
+
+
+def _command_label(command: str) -> str:
+    labels = {
+        "collect_symbols": "Refresh symbols",
+        "collect_events": "Refresh events",
+        "collect_market": "Refresh market",
+        "collect_all": "Full collection",
+        "dividend_alerts": "Run dividend alerts",
+        "corporate_actions": "Run corporate action alerts",
+        "watchlist_alerts": "Run watchlist alerts",
+        "unusual_activity": "Run unusual activity alerts",
+        "summary_morning": "Send morning summary",
+        "summary_eod": "Send end-of-day summary",
+    }
+    return labels.get(command, command.replace("_", " ").title())
+
+
+def _is_long_running_command(command: str) -> bool:
+    return command in set(COMMAND_TO_JOB) | set(MANUAL_ALERT_COMMANDS)
 
 
 def _format_manual_alert_result(command: str, sent: int) -> str:
