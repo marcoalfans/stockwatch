@@ -22,6 +22,8 @@ class Settings:
     telegram_enabled: bool
     telegram_commands_enabled: bool
     telegram_command_chat_ids: tuple[str, ...]
+    telegram_poll_timeout_seconds: int
+    telegram_command_workers: int
     alert_min_severity: str
     alert_max_per_day: int
     watchlist_rules_path: Path
@@ -46,6 +48,8 @@ def get_settings() -> Settings:
         telegram_command_chat_ids=_parse_chat_ids(
             os.getenv("TELEGRAM_COMMAND_CHAT_IDS") or os.getenv("TELEGRAM_CHAT_ID", "")
         ),
+        telegram_poll_timeout_seconds=int(os.getenv("TELEGRAM_POLL_TIMEOUT_SECONDS", "10")),
+        telegram_command_workers=int(os.getenv("TELEGRAM_COMMAND_WORKERS", "4")),
         alert_min_severity=os.getenv("ALERT_MIN_SEVERITY", "medium").lower(),
         alert_max_per_day=int(os.getenv("ALERT_MAX_PER_DAY", "20")),
         watchlist_rules_path=BASE_DIR / os.getenv("WATCHLIST_RULES_PATH", "data/watchlist_rules.json"),

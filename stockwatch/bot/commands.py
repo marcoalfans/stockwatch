@@ -4,6 +4,7 @@ import json
 import logging
 import shlex
 import time
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from html import escape
 
 from stockwatch.config import get_settings
@@ -197,17 +198,32 @@ def run_bot_listener(poll_interval_seconds: int = 2) -> None:
 
     init_db()
     offset = _bootstrap_update_offset()
-    while True:
-        response = get_telegram_updates(offset=offset, timeout=25)
-        for update in response.get("result", []):
-            offset = int(update["update_id"]) + 1
-            try:
-                _handle_update(update)
-            except Exception:
-                logger.exception("Failed to handle Telegram update")
-                continue
-        if not response.get("result"):
-            time.sleep(poll_interval_seconds)
+    executor = ThreadPoolExecutor(max_workers=max(1, settings.telegram_command_workers), thread_name_prefix="tg-bot")
+    futures = set()
+    try:
+        while True:
+            response = get_telegram_updates(offset=offset, timeout=settings.telegram_poll_timeout_seconds)
+            for update in response.get("result", []):
+                offset = int(update["update_id"]) + 1
+                futures.add(executor.submit(_safe_handle_update, update))
+            if futures:
+                done, pending = wait(futures, timeout=0, return_when=FIRST_COMPLETED)
+                futures = pending
+                for future in done:
+                    future.result()
+            if not response.get("result"):
+                time.sleep(poll_interval_seconds)
+    finally:
+        for future in futures:
+            future.cancel()
+        executor.shutdown(wait=False, cancel_futures=True)
+
+
+def _safe_handle_update(update: dict) -> None:
+    try:
+        _handle_update(update)
+    except Exception:
+        logger.exception("Failed to handle Telegram update")
 
 
 def _handle_update(update: dict) -> None:
