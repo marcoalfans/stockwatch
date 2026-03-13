@@ -27,6 +27,9 @@ class Settings:
     watchlist_rules_path: Path
     market_priority_symbols_path: Path
     market_priority_limit: int
+    ksei_calendar_months_ahead: int
+    ksei_publication_months_back: int
+    ksei_publication_max_age_days: int
     timezone: str = "Asia/Jakarta"
 
 
@@ -48,6 +51,9 @@ def get_settings() -> Settings:
         watchlist_rules_path=BASE_DIR / os.getenv("WATCHLIST_RULES_PATH", "data/watchlist_rules.json"),
         market_priority_symbols_path=BASE_DIR / os.getenv("MARKET_PRIORITY_SYMBOLS_PATH", "data/bootstrap_symbols.csv"),
         market_priority_limit=int(os.getenv("MARKET_PRIORITY_LIMIT", "100")),
+        ksei_calendar_months_ahead=int(os.getenv("KSEI_CALENDAR_MONTHS_AHEAD", "1")),
+        ksei_publication_months_back=int(os.getenv("KSEI_PUBLICATION_MONTHS_BACK", "1")),
+        ksei_publication_max_age_days=int(os.getenv("KSEI_PUBLICATION_MAX_AGE_DAYS", "45")),
     )
 
 

@@ -53,7 +53,11 @@ def normalize_events(frame: pd.DataFrame) -> pd.DataFrame:
 
 def _event_key(row: pd.Series) -> str:
     event_date = row.get("ex_date") or row.get("effective_date") or row.get("announcement_date") or ""
-    return f"{row['source_type']}::{row['symbol']}::{event_date}"
+    if str(row.get("source_type", "")).lower() == "dividend":
+        return f"{row['source_type']}::{row['symbol']}::{event_date}"
+    descriptor = row.get("source_url") or row.get("title") or row.get("description") or event_date
+    descriptor_hash = sha256(str(descriptor).encode()).hexdigest()[:12]
+    return f"{row['source_type']}::{row['symbol']}::{event_date}::{descriptor_hash}"
 
 
 def _fingerprint(row: pd.Series) -> str:
@@ -76,7 +80,7 @@ def _event_severity(row: pd.Series) -> str:
     source_type = str(row.get("source_type", "")).lower()
     if source_type == "dividend":
         return "high"
-    if source_type in {"rights_issue", "stock_split", "reverse_stock_split", "tender_offer"}:
+    if source_type in {"rights_issue", "stock_split", "reverse_stock_split", "tender_offer", "merger", "acquisition"}:
         return "high"
     if source_type in {"buyback", "rups"}:
         return "medium"

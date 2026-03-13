@@ -22,7 +22,7 @@ StockWatch sekarang direvisi menjadi `Telegram-based IHSG Alert Engine`, bukan d
 ## Fitur Saat Ini
 
 - `Dividend notifier`: alert dividen baru, reminder harian sampai ex-date, stop otomatis setelah ex-date lewat
-- `Corporate action watcher`: event baru dan update material untuk dividend, rights issue, stock split, reverse stock split, buyback, tender offer, dan RUPS jika tersedia dari source
+- `Corporate action watcher`: event baru dan update material untuk dividend, rights issue, stock split, reverse stock split, buyback, tender offer, merger/acquisition, dan RUPS dari source KSEI
 - `Watchlist alert engine`: rule `price_above`, `price_below`, `volume_multiple_gt`, `ex_date_within_days`, dan `breakout_20d_high`
 - `Unusual activity detector`: alert aktivitas harga/volume yang tidak biasa pada universe market yang aktif
 - `Daily market summary`: summary pagi dan end-of-day ke Telegram
@@ -52,7 +52,7 @@ StockWatch sekarang direvisi menjadi `Telegram-based IHSG Alert Engine`, bukan d
 ## Data Coverage
 
 - `Full symbol universe`: seluruh emiten IDX aktif dari KSEI
-- `Full event coverage`: seluruh event yang bisa ditarik dari calendar/detail KSEI
+- `Full event coverage`: event dari `calendar/detail KSEI` ditambah `publications corporate action KSEI`
 - `Selective market coverage`: harga hanya diambil untuk symbol yang relevan dengan alert engine
 - `Dynamic priority universe`: top most active Indonesia harian dari TradingView
 - `Auto-expand`: symbol event KSEI di luar priority universe tetap ikut masuk ke market collector
@@ -295,6 +295,9 @@ STOCKWATCH_ADMIN_PORT=8501
 WATCHLIST_RULES_PATH=data/watchlist_rules.json
 MARKET_PRIORITY_SYMBOLS_PATH=data/bootstrap_symbols.csv
 MARKET_PRIORITY_LIMIT=100
+KSEI_CALENDAR_MONTHS_AHEAD=1
+KSEI_PUBLICATION_MONTHS_BACK=1
+KSEI_PUBLICATION_MAX_AGE_DAYS=45
 ```
 
 Credential tidak di-hardcode di source code final.
@@ -343,6 +346,8 @@ python -m pip install -e .
 Untuk production, alert event tidak lagi mengambil data dari sample/seed CSV.
 
 - `Dividend / corporate action events`: live collector dari `web.ksei.co.id`
+  - `KSEI calendar/detail` untuk dividend dan tanggal corporate action yang terstruktur
+  - `KSEI publications` untuk `meeting-announcement`, `meeting-convocation`, `minutes-of-meeting`, `rights-distribution`, dan `masr`
 - `Symbol universe`: master securities live dari KSEI untuk seluruh emiten IDX aktif
 - `Market prices`: live snapshot dari `yfinance` hanya untuk simbol yang relevan dengan alert engine:
   - simbol watchlist
@@ -356,7 +361,8 @@ File bootstrap event di folder `data/` kini hanya berfungsi sebagai contoh forma
 ## Batasan MVP Saat Ini
 
 - `Ex-date` dividend dari KSEI saat ini masih diestimasi sebagai next business day setelah `cum-date`
-- corporate action coverage masih mengikuti apa yang muncul di KSEI calendar/detail
+- source IDX disclosure resmi belum dijadikan jalur utama karena akses dari server ini diblokir Cloudflare
+- corporate action coverage sekarang jauh lebih luas lewat publikasi resmi KSEI, tetapi masih belum identik 100% dengan seluruh keterbukaan informasi IDX
 - watchlist rules masih berbasis file JSON, belum CRUD penuh dari admin
 - admin panel masih fokus observability, belum role/auth production
 
