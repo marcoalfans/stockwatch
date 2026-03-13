@@ -1,0 +1,17 @@
+[Unit]
+Description=StockWatch Admin Service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=kac0
+Group=kac0
+WorkingDirectory=/opt/stockwatch
+ExecStart=/opt/stockwatch/stockwatchctl admin
+Restart=always
+RestartSec=5
+TimeoutStopSec=20
+
+[Install]
+WantedBy=multi-user.target

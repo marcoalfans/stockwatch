@@ -195,10 +195,51 @@ nano .env
 
 Untuk production yang lebih rapi, gunakan `systemd` dan biasanya pisahkan:
 
-- `stockwatch-worker`: `./stockwatchctl worker`
+- `stockwatch-ops`: `./stockwatchctl ops`
 - `stockwatch-admin`: `./stockwatchctl admin --port 8501`
 
 `all-in-one` saya sediakan untuk kemudahan single-command, tetapi secara operasional 2 service tetap lebih kuat karena restart dan observability lebih bersih.
+
+### systemd
+
+File service siap pakai ada di:
+
+- `deploy/systemd/stockwatch-ops.service`
+- `deploy/systemd/stockwatch-admin.service`
+- `deploy/systemd/stockwatch-all-in-one.service`
+
+Sebelum dipakai, edit dulu nilai berikut sesuai server Anda:
+
+- `User=`
+- `Group=`
+- `WorkingDirectory=`
+- `ExecStart=`
+
+Rekomendasi production:
+
+- aktifkan `stockwatch-ops.service`
+- aktifkan `stockwatch-admin.service`
+- jangan aktifkan `stockwatch-all-in-one.service` bersamaan
+
+Contoh deploy:
+
+```bash
+cd /opt/stockwatch
+sudo cp deploy/systemd/stockwatch-ops.service /etc/systemd/system/
+sudo cp deploy/systemd/stockwatch-admin.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now stockwatch-ops
+sudo systemctl enable --now stockwatch-admin
+sudo systemctl status stockwatch-ops
+sudo systemctl status stockwatch-admin
+```
+
+Lihat log:
+
+```bash
+sudo journalctl -u stockwatch-ops -f
+sudo journalctl -u stockwatch-admin -f
+```
 
 ## Konfigurasi Telegram
 
@@ -218,6 +259,43 @@ MARKET_PRIORITY_LIMIT=100
 Credential tidak di-hardcode di source code final.
 
 `TELEGRAM_COMMAND_CHAT_IDS` membatasi chat mana yang boleh menjalankan command bot. Untuk harian, admin panel jadi opsional kalau command Telegram ini sudah cukup.
+
+## Troubleshooting
+
+### Bot Telegram tidak merespons
+
+- pastikan service/proses `ops` atau `bot` sedang jalan
+- cek log: `sudo journalctl -u stockwatch-ops -f`
+- coba test lokal: `./stockwatchctl python -c "import yfinance, stockwatch; print('ok')"`
+
+### Port admin sudah dipakai
+
+- ubah `STOCKWATCH_ADMIN_PORT` di `.env`
+- atau hentikan proses lama yang masih memakai port itu
+
+### Kena rate limit Telegram
+
+- bot sekarang sudah retry otomatis untuk `429`
+- jika masih sering terjadi, kurangi trigger manual beruntun
+- cek log service untuk melihat frekuensi alert yang terlalu rapat
+
+### Setelah pindah folder repo, virtualenv bermasalah
+
+- virtualenv Python menyimpan path absolut
+- solusi paling aman:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e .
+```
+
+### Reset operasional dasar
+
+```bash
+./stockwatchctl bootstrap
+./stockwatchctl ops
+```
 
 ## Sumber event production
 
