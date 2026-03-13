@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import signal
 import subprocess
 import sys
@@ -88,16 +89,22 @@ def _run(command: list[str]) -> None:
 
 
 def _run_parallel(commands: list[list[str]]) -> None:
-    processes = [subprocess.Popen(command, cwd=BASE_DIR) for command in commands]
+    processes = [subprocess.Popen(command, cwd=BASE_DIR, preexec_fn=os.setsid) for command in commands]
 
     def _shutdown(*_args) -> None:
         for proc in processes:
             if proc.poll() is None:
-                proc.terminate()
+                try:
+                    os.killpg(proc.pid, signal.SIGTERM)
+                except ProcessLookupError:
+                    pass
         time.sleep(1)
         for proc in processes:
             if proc.poll() is None:
-                proc.kill()
+                try:
+                    os.killpg(proc.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
         raise SystemExit(0)
 
     signal.signal(signal.SIGINT, _shutdown)

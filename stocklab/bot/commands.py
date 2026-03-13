@@ -15,7 +15,12 @@ from stocklab.jobs.alerts import (
     run_watchlist_alerts_manual,
 )
 from stocklab.jobs.runner import run_job
-from stocklab.notifiers.telegram import get_telegram_updates, safe_answer_callback_query, send_telegram_message
+from stocklab.notifiers.telegram import (
+    TelegramRateLimitError,
+    get_telegram_updates,
+    safe_answer_callback_query,
+    send_telegram_message,
+)
 from stocklab.storage.db import init_db
 from stocklab.storage.repository import StockLabRepository
 from stocklab.utils.watchlist_rules import (
@@ -40,6 +45,12 @@ HELP_TEXT = """<b>StockLab Commands</b>
 • <code>/menu</code> open control menu
 • <code>/help</code> show command reference
 • <code>/status</code> show system status
+
+<b>Data</b>
+• <code>/symbols</code> browse IDX symbols
+• <code>/symbols_find QUERY</code> search IDX symbols
+• <code>/events</code> browse active events
+• <code>/market</code> browse selective market universe
 
 <b>Collection</b>
 • <code>/collect_symbols</code> refresh IDX symbol master
@@ -114,7 +125,11 @@ MANUAL_ALERT_COMMANDS = {
 
 MENU_TEXT = {
     "main": "<b>StockLab Control</b>\nPilih menu di bawah.",
-    "collect": "<b>📥 Data Collection</b>\nPilih job ingestion yang ingin dijalankan.",
+    "data": "<b>📊 Data Browser</b>\nLihat symbols, market universe, dan active events.",
+    "collect": "<b>📥 Collect Jobs</b>\nJalankan refresh data yang Anda butuhkan.",
+    "symbols": "<b>🏷️ IDX Symbols</b>\nLihat daftar symbol atau cari symbol tertentu.",
+    "events": "<b>📅 Active Events</b>\nLihat event aktif yang sedang dipantau.",
+    "market": "<b>📈 Market Universe</b>\nLihat saham yang sedang masuk universe market collector.",
     "alerts": "<b>🔔 Alert Engine</b>\nPilih alert job yang ingin dijalankan manual.",
     "summary": "<b>📰 Market Summary</b>\nPilih summary yang ingin dikirim sekarang.",
     "watchlist": "<b>👀 Watchlist Menu</b>\nLihat rules aktif atau jalankan alert watchlist.",
@@ -123,14 +138,36 @@ MENU_TEXT = {
 
 MENU_LAYOUTS = {
     "main": [
-        [("⚙️ System", "menu:system"), ("📥 Data", "menu:collect")],
-        [("🔔 Alerts", "menu:alerts"), ("📰 Summary", "menu:summary")],
-        [("👀 Watchlist", "menu:watchlist"), ("ℹ️ Help", "help")],
+        [("⚙️ System", "menu:system"), ("📊 Data", "menu:data")],
+        [("📥 Collect", "menu:collect"), ("🔔 Alerts", "menu:alerts")],
+        [("📰 Summary", "menu:summary"), ("👀 Watchlist", "menu:watchlist")],
+        [("ℹ️ Help", "help")],
+    ],
+    "data": [
+        [("Symbols", "symbols"), ("Events", "events")],
+        [("Market", "market")],
+        [("← Back", "menu:main")],
     ],
     "collect": [
-        [("Symbols", "collect_symbols"), ("Events", "collect_events")],
-        [("Market", "collect_market"), ("Collect All", "collect_all")],
+        [("Refresh Symbols", "collect_symbols"), ("Refresh Events", "collect_events")],
+        [("Refresh Market", "collect_market"), ("Collect All", "collect_all")],
         [("← Back", "menu:main")],
+    ],
+    "symbols": [
+        [("Browse", "symbols"), ("Search Help", "symbols_help")],
+        [("View Events", "events"), ("View Market", "market")],
+        [("↻ Refresh Symbols", "collect_symbols")],
+        [("← Back", "menu:data")],
+    ],
+    "events": [
+        [("Browse", "events"), ("View Market", "market")],
+        [("↻ Refresh Events", "collect_events")],
+        [("← Back", "menu:data")],
+    ],
+    "market": [
+        [("Browse", "market"), ("View Events", "events")],
+        [("↻ Refresh Market", "collect_market")],
+        [("← Back", "menu:data")],
     ],
     "alerts": [
         [("Dividend", "dividend_alerts"), ("Corp Action", "corporate_actions")],
@@ -210,7 +247,10 @@ def _handle_callback_query(callback_query: dict) -> None:
 
 def _send_command_response(chat_id: str, command_text: str) -> None:
     response_text, keyboard = _dispatch_command(command_text)
-    send_telegram_message(response_text, chat_id=chat_id, reply_markup=keyboard)
+    try:
+        send_telegram_message(response_text, chat_id=chat_id, reply_markup=keyboard)
+    except TelegramRateLimitError as exc:
+        logger.warning("Telegram rate limit while responding to command %s: retry_after=%s", command_text, exc.retry_after)
 
 
 def _dispatch_command(command_text: str) -> tuple[str, dict | None]:
@@ -226,6 +266,25 @@ def _dispatch_command(command_text: str) -> tuple[str, dict | None]:
         return MENU_TEXT["main"], _menu_keyboard("main")
     if command == "status":
         return _build_status_message(), _menu_keyboard("system")
+    if command == "symbols_help":
+        return _build_symbols_help_message(), _menu_keyboard("symbols")
+    if command == "symbols":
+        return _build_symbols_message(page=0), _symbols_keyboard(page=0)
+    if command == "symbols_find":
+        return _build_symbols_search_message(args), _menu_keyboard("symbols")
+    if command.startswith("symbols_page:"):
+        page = _parse_page_command(command, prefix="symbols_page:")
+        return _build_symbols_message(page=page), _symbols_keyboard(page=page)
+    if command == "events":
+        return _build_events_message(page=0), _events_keyboard(page=0)
+    if command.startswith("events_page:"):
+        page = _parse_page_command(command, prefix="events_page:")
+        return _build_events_message(page=page), _events_keyboard(page=page)
+    if command == "market":
+        return _build_market_message(page=0), _market_keyboard(page=0)
+    if command.startswith("market_page:"):
+        page = _parse_page_command(command, prefix="market_page:")
+        return _build_market_message(page=page), _market_keyboard(page=page)
     if command == "watchlist_help":
         return WATCHLIST_HELP_TEXT, _menu_keyboard("watchlist")
     if command == "watchlist_show":
@@ -299,6 +358,149 @@ def _build_watchlist_message() -> str:
     return "\n".join(lines)
 
 
+def _build_symbols_help_message() -> str:
+    return "\n".join(
+        [
+            "<b>🏷️ IDX Symbol Browser</b>",
+            "────────────",
+            "• <code>/symbols</code> browse symbol list",
+            "• <code>/symbols_find bbca</code> search by symbol or company name",
+            "• Use Prev / Next buttons to move between pages",
+        ]
+    )
+
+
+def _build_symbols_message(page: int = 0, page_size: int = 15) -> str:
+    repo = StockLabRepository()
+    symbols = repo.get_symbols()
+    if symbols.empty:
+        return "<b>🏷️ IDX Symbols</b>\n────────────\n• no symbols loaded"
+
+    total = len(symbols)
+    max_page = max((total - 1) // page_size, 0)
+    page = max(0, min(page, max_page))
+    start = page * page_size
+    end = start + page_size
+    chunk = symbols.iloc[start:end]
+
+    lines = [
+        "<b>🏷️ IDX Symbols</b>",
+        "────────────",
+        f"• Total: <code>{total}</code>",
+        f"• Page: <code>{page + 1}/{max_page + 1}</code>",
+        "",
+    ]
+    for _, row in chunk.iterrows():
+        company_name = escape(str(row.get("company_name") or "-"))
+        lines.append(f"• <code>{escape(str(row['symbol']))}</code> {company_name}")
+    return "\n".join(lines)
+
+
+def _build_symbols_search_message(args: list[str], limit: int = 20) -> str:
+    if not args:
+        return "Usage: <code>/symbols_find QUERY</code>"
+    query = " ".join(args).strip().lower()
+    repo = StockLabRepository()
+    symbols = repo.get_symbols()
+    if symbols.empty:
+        return "<b>🏷️ IDX Symbols</b>\n────────────\n• no symbols loaded"
+
+    symbol_series = symbols["symbol"].fillna("").astype(str)
+    company_series = symbols["company_name"].fillna("").astype(str)
+    matched = symbols[
+        symbol_series.str.lower().str.contains(query, regex=False)
+        | company_series.str.lower().str.contains(query, regex=False)
+    ].head(limit)
+
+    if matched.empty:
+        return "\n".join(
+            [
+                "<b>🏷️ IDX Symbol Search</b>",
+                "────────────",
+                f"• Query: <code>{escape(query)}</code>",
+                "• Result: <code>0 match</code>",
+            ]
+        )
+
+    lines = [
+        "<b>🏷️ IDX Symbol Search</b>",
+        "────────────",
+        f"• Query: <code>{escape(query)}</code>",
+        f"• Result: <code>{len(matched)} match(es)</code>",
+        "",
+    ]
+    for _, row in matched.iterrows():
+        company_name = escape(str(row.get("company_name") or "-"))
+        lines.append(f"• <code>{escape(str(row['symbol']))}</code> {company_name}")
+    if len(matched) == limit:
+        lines.append("")
+        lines.append("• refine query for more specific results")
+    return "\n".join(lines)
+
+
+def _build_events_message(page: int = 0, page_size: int = 10) -> str:
+    repo = StockLabRepository()
+    events = repo.get_active_events()
+    if events.empty:
+        return "<b>📅 Active Events</b>\n────────────\n• no active events"
+
+    total = len(events)
+    max_page = max((total - 1) // page_size, 0)
+    page = max(0, min(page, max_page))
+    start = page * page_size
+    end = start + page_size
+    chunk = events.iloc[start:end]
+
+    lines = [
+        "<b>📅 Active Events</b>",
+        "────────────",
+        f"• Total: <code>{total}</code>",
+        f"• Page: <code>{page + 1}/{max_page + 1}</code>",
+        "",
+    ]
+    for _, row in chunk.iterrows():
+        source_type = escape(str(row.get("source_type") or "-")).title()
+        symbol = escape(str(row.get("symbol") or "-"))
+        company_name = escape(str(row.get("company_name") or "-"))
+        ex_date = escape(str(row.get("ex_date") or "-"))
+        lines.append(f"• <code>{symbol}</code> {company_name}")
+        lines.append(f"  {source_type} · Ex: <code>{ex_date}</code>")
+    return "\n".join(lines)
+
+
+def _build_market_message(page: int = 0, page_size: int = 15) -> str:
+    repo = StockLabRepository()
+    prices = repo.get_latest_prices()
+    if prices.empty:
+        return "<b>📈 Market Universe</b>\n────────────\n• no market prices loaded"
+
+    prices = prices.sort_values(["symbol"])
+    total = len(prices)
+    max_page = max((total - 1) // page_size, 0)
+    page = max(0, min(page, max_page))
+    start = page * page_size
+    end = start + page_size
+    chunk = prices.iloc[start:end]
+
+    lines = [
+        "<b>📈 Market Universe</b>",
+        "────────────",
+        f"• Total: <code>{total}</code>",
+        f"• Page: <code>{page + 1}/{max_page + 1}</code>",
+        "",
+    ]
+    for _, row in chunk.iterrows():
+        symbol = escape(str(row.get("symbol") or "-"))
+        close_value = row.get("close")
+        volume_value = row.get("volume")
+        trade_date = escape(str(row.get("trade_date") or "-"))
+        close_text = f"{float(close_value):,.0f}" if close_value is not None else "-"
+        volume_text = f"{float(volume_value):,.0f}" if volume_value is not None else "-"
+        lines.append(f"• <code>{symbol}</code> Close: <code>{close_text}</code> · Vol: <code>{volume_text}</code>")
+        lines.append(f"  Date: <code>{trade_date}</code>")
+    return "\n".join(lines)
+
+
 def _format_job_result(command: str, result: dict) -> str:
     return "\n".join(
         [
@@ -340,9 +542,81 @@ def _menu_keyboard(menu_name: str) -> dict:
     }
 
 
+def _symbols_keyboard(page: int, page_size: int = 15) -> dict:
+    repo = StockLabRepository()
+    symbols = repo.get_symbols()
+    total = len(symbols)
+    max_page = max((total - 1) // page_size, 0)
+    page = max(0, min(page, max_page))
+
+    navigation: list[dict[str, str]] = []
+    if page > 0:
+        navigation.append({"text": "← Prev", "callback_data": f"symbols_page:{page - 1}"})
+    if page < max_page:
+        navigation.append({"text": "Next →", "callback_data": f"symbols_page:{page + 1}"})
+
+    rows: list[list[dict[str, str]]] = []
+    if navigation:
+        rows.append(navigation)
+    rows.append([{"text": "Search Help", "callback_data": "symbols_help"}, {"text": "↻ Refresh Symbols", "callback_data": "collect_symbols"}])
+    rows.append([{"text": "← Back", "callback_data": "menu:data"}])
+    return {"inline_keyboard": rows}
+
+
+def _events_keyboard(page: int, page_size: int = 10) -> dict:
+    repo = StockLabRepository()
+    events = repo.get_active_events()
+    total = len(events)
+    max_page = max((total - 1) // page_size, 0)
+    page = max(0, min(page, max_page))
+
+    navigation: list[dict[str, str]] = []
+    if page > 0:
+        navigation.append({"text": "← Prev", "callback_data": f"events_page:{page - 1}"})
+    if page < max_page:
+        navigation.append({"text": "Next →", "callback_data": f"events_page:{page + 1}"})
+
+    rows: list[list[dict[str, str]]] = []
+    if navigation:
+        rows.append(navigation)
+    rows.append([{"text": "↻ Refresh Events", "callback_data": "collect_events"}, {"text": "View Market", "callback_data": "market"}])
+    rows.append([{"text": "← Back", "callback_data": "menu:data"}])
+    return {"inline_keyboard": rows}
+
+
+def _market_keyboard(page: int, page_size: int = 15) -> dict:
+    repo = StockLabRepository()
+    prices = repo.get_latest_prices()
+    total = len(prices)
+    max_page = max((total - 1) // page_size, 0)
+    page = max(0, min(page, max_page))
+
+    navigation: list[dict[str, str]] = []
+    if page > 0:
+        navigation.append({"text": "← Prev", "callback_data": f"market_page:{page - 1}"})
+    if page < max_page:
+        navigation.append({"text": "Next →", "callback_data": f"market_page:{page + 1}"})
+
+    rows: list[list[dict[str, str]]] = []
+    if navigation:
+        rows.append(navigation)
+    rows.append([{"text": "↻ Refresh Market", "callback_data": "collect_market"}, {"text": "View Events", "callback_data": "events"}])
+    rows.append([{"text": "← Back", "callback_data": "menu:data"}])
+    return {"inline_keyboard": rows}
+
+
 def _result_keyboard(command: str) -> dict:
     if command in {"collect_symbols", "collect_events", "collect_market", "collect_all"}:
         return _menu_keyboard("collect")
+    if command in {"symbols", "symbols_help"} or command.startswith("symbols_page:"):
+        page = _parse_page_command(command, prefix="symbols_page:") if command.startswith("symbols_page:") else 0
+        return _symbols_keyboard(page=page)
+    if command == "events" or command.startswith("events_page:"):
+        page = _parse_page_command(command, prefix="events_page:") if command.startswith("events_page:") else 0
+        return _events_keyboard(page=page)
+    if command == "market" or command.startswith("market_page:"):
+        page = _parse_page_command(command, prefix="market_page:") if command.startswith("market_page:") else 0
+        return _market_keyboard(page=page)
     if command in {"dividend_alerts", "corporate_actions", "watchlist_alerts", "unusual_activity"}:
         return _menu_keyboard("alerts")
     if command in {"summary_morning", "summary_eod"}:
@@ -368,6 +642,13 @@ def _parse_command_text(command_text: str) -> tuple[str, list[str]]:
         return "", []
     command = parts[0].split("@", 1)[0].strip().lower()
     return command, parts[1:]
+
+
+def _parse_page_command(command: str, prefix: str) -> int:
+    try:
+        return max(0, int(command.split(prefix, 1)[1]))
+    except (IndexError, ValueError):
+        return 0
 
 
 def _handle_watchlist_add(args: list[str]) -> str:

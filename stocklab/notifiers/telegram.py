@@ -1,11 +1,17 @@
 from __future__ import annotations
 
 import json
+import time
 
 import requests
 
 from stocklab.config import get_settings
-from stocklab.utils.retry import retry_call
+
+
+class TelegramRateLimitError(RuntimeError):
+    def __init__(self, retry_after: int) -> None:
+        super().__init__(f"Telegram rate limited request, retry after {retry_after}s")
+        self.retry_after = retry_after
 
 
 def send_telegram_message(
@@ -51,6 +57,8 @@ def answer_callback_query(callback_query_id: str, text: str | None = None) -> di
 def safe_answer_callback_query(callback_query_id: str, text: str | None = None) -> dict:
     try:
         return answer_callback_query(callback_query_id, text=text)
+    except TelegramRateLimitError as exc:
+        return {"ok": False, "ignored": True, "reason": "rate_limited", "retry_after": exc.retry_after}
     except requests.HTTPError as exc:
         response = exc.response
         if response is not None and response.status_code == 400:
@@ -64,13 +72,26 @@ def telegram_api_request(method: str, payload: dict) -> dict:
         raise RuntimeError("Telegram bot token not configured")
 
     url = f"https://api.telegram.org/bot{settings.telegram_bot_token}/{method}"
-
-    def _send() -> dict:
+    attempts = 5
+    total_wait_seconds = 0
+    max_total_wait_seconds = 8
+    for attempt in range(1, attempts + 1):
         response = requests.post(url, json=payload, timeout=35)
+        if response.status_code == 429:
+            retry_after = 3
+            try:
+                body = response.json()
+                retry_after = int(body.get("parameters", {}).get("retry_after", retry_after))
+            except Exception:
+                pass
+            total_wait_seconds += retry_after + 1
+            if attempt == attempts or total_wait_seconds > max_total_wait_seconds:
+                raise TelegramRateLimitError(retry_after)
+            time.sleep(retry_after + 1)
+            continue
         response.raise_for_status()
         return response.json()
-
-    return retry_call(_send, attempts=3, sleep_seconds=2)
+    raise RuntimeError(f"Telegram API request failed after {attempts} attempts: {method}")
 
 
 def safe_response_payload(payload: dict) -> str:
