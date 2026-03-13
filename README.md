@@ -1,38 +1,36 @@
 # StockWatch
 
-StockWatch sekarang direvisi menjadi `Telegram-based IHSG Alert Engine`, bukan dashboard saham generik. Fokus produk adalah event penting, reminder, watchlist alert, unusual activity, dan ringkasan pasar yang dikirim otomatis ke Telegram.
+Telegram-first IHSG alert engine for dividend reminders, corporate actions, watchlist rules, unusual activity, and market summaries.
 
-## Core workflow
+StockWatch is not a generic stock dashboard. It is built to reduce noise and push actionable market events directly to Telegram, so you do not need to keep opening a dashboard manually.
 
-1. Collector mengambil event dan market snapshot
-2. Parser menormalisasi event
-3. Signal engine mengevaluasi reminder, watchlist rules, dan unusual activity
-4. Notifier mengirim alert ke Telegram dengan dedup dan retry
-5. Admin panel ringan hanya untuk melihat event, log, dan konfigurasi lokal
+## What It Does
 
-## Stack
+- Sends `dividend alerts` and daily reminders until ex-date
+- Tracks `corporate actions` such as RUPS and tender offers from KSEI sources
+- Evaluates `watchlist rules` like `price_above`, `price_below`, `volume_multiple_gt`, and `breakout_20d_high`
+- Detects `unusual activity` on the active market universe
+- Sends `morning` and `end-of-day` market summaries
+- Exposes `Telegram bot commands` and inline buttons for operational control
+- Provides a lightweight `admin panel` for logs, events, jobs, and watchlist config
 
-- `Python 3.11+`
-- `SQLite`
-- `APScheduler`
-- `requests`
-- `pandas`
-- `streamlit` untuk admin panel ringan
+## Product Direction
 
-## Fitur Saat Ini
+Core principle:
+- Telegram is the primary interface
+- Alerts should be actionable
+- Noise should be suppressed
+- Dashboard is secondary
 
-- `Dividend notifier`: alert dividen baru, reminder harian sampai ex-date, stop otomatis setelah ex-date lewat
-- `Corporate action watcher`: event baru dan update material untuk dividend, rights issue, stock split, reverse stock split, buyback, tender offer, merger/acquisition, dan RUPS dari source KSEI
-- `Watchlist alert engine`: rule `price_above`, `price_below`, `volume_multiple_gt`, `ex_date_within_days`, dan `breakout_20d_high`
-- `Unusual activity detector`: alert aktivitas harga/volume yang tidak biasa pada universe market yang aktif
-- `Daily market summary`: summary pagi dan end-of-day ke Telegram
-- `Telegram notifier`: formatting rapi, emoji per alert type, retry, logging, dan manual trigger dari admin
-- `Telegram command bot`: control plane ringan untuk menjalankan job dan cek status langsung dari Telegram
-- `Anti-spam`: dedup harian, severity filter, dan limit alert otomatis per hari
-- `Selective market ingestion`: hanya fetch harga untuk saham watchlist, event aktif, dan priority/liquid universe harian
-- `Admin panel`: observability event, update, alert, job run, watchlist rules, dan tombol trigger manual
+Main components:
+- `Event Collector`
+- `Signal Engine`
+- `Telegram Notifier`
+- `Watchlist Rules Engine`
 
-## Alert Types
+## Feature Set
+
+### Alerts
 
 - `💰 Dividend Alert`
 - `🏛️ Corporate Action Alert`
@@ -41,45 +39,101 @@ StockWatch sekarang direvisi menjadi `Telegram-based IHSG Alert Engine`, bukan d
 - `⚡ Unusual Activity`
 - `📰 Market Summary`
 
-## Anti-Spam Rules
+### Anti-Spam
 
-- alert otomatis yang sama tidak dikirim lebih dari `1x` per hari
-- `low severity` tidak dikirim jika `ALERT_MIN_SEVERITY=medium`
-- limit alert otomatis dibatasi oleh `ALERT_MAX_PER_DAY`
-- manual trigger dari admin bypass dedup dan kuota harian otomatis
-- perubahan teknis seperti `raw_payload` dan `source_url` tidak dikirim sebagai update Telegram
+- Same automatic alert is not sent more than `1x` per day
+- `ALERT_MIN_SEVERITY` filters out low-priority alerts
+- `ALERT_MAX_PER_DAY` limits total daily automatic alert volume
+- Manual trigger from Telegram/admin bypasses normal daily dedup and quota
+- Technical field changes such as `raw_payload` and `source_url` are ignored for Telegram update alerts
 
-## Data Coverage
+### Telegram Operations
 
-- `Full symbol universe`: seluruh emiten IDX aktif dari KSEI
-- `Full event coverage`: event dari `calendar/detail KSEI` ditambah `publications corporate action KSEI`
-- `Selective market coverage`: harga hanya diambil untuk symbol yang relevan dengan alert engine
-- `Dynamic priority universe`: top most active Indonesia harian dari TradingView
-- `Auto-expand`: symbol event KSEI di luar priority universe tetap ikut masuk ke market collector
+- Inline menu for system, data, collect, alerts, summary, and watchlist
+- Command-based CRUD for watchlist rules
+- Progress indicator for long-running actions such as `Collect All`
+- Retry handling for Telegram `429` rate limits
 
-## Struktur utama
+## Architecture
 
-- `docs/telegram-alert-engine.md`: desain revisi total sistem
-- `streamlit_app.py`: admin panel ringan
-- `run_jobs.py`: CLI runner untuk init, collect, summary, scheduler
-- `main.py`: single launcher untuk `bootstrap`, `worker`, `bot`, `ops`, `admin`, dan `all-in-one`
-- `stockwatch/config/`: settings dan env
-- `stockwatch/storage/`: koneksi DB, schema, repository
-- `stockwatch/collectors/`: ingestion event dan market snapshot
-- `stockwatch/parsers/`: normalisasi event
-- `stockwatch/signals/`: dividend reminder, watchlist rules, unusual activity, summary builder
-- `stockwatch/notifiers/`: formatter dan Telegram sender
-- `stockwatch/bot/`: Telegram command bot dan inline menu
-- `stockwatch/jobs/`: job runner terjadwal
-- `stockwatch/utils/`: helpers tanggal, logging, retry, dan watchlist rules
-- `data/`: bootstrap symbol master, corporate action seed, watchlist rule config
+Flow:
+1. Collectors fetch events, symbols, and market snapshots
+2. Parsers normalize events
+3. Signals evaluate reminders and alerts
+4. Notifiers format and send Telegram messages
+5. Storage persists events, alert logs, jobs, and watchlist rules
 
-Catatan:
-- branding produk sudah `StockWatch`
-- package Python internal sekarang juga sudah `stockwatch`
-- folder legacy dashboard lama sudah dibuang dari tree aktif
+Main runtime modules:
+- `stockwatch/collectors/`
+- `stockwatch/parsers/`
+- `stockwatch/signals/`
+- `stockwatch/notifiers/`
+- `stockwatch/jobs/`
+- `stockwatch/storage/`
+- `stockwatch/bot/`
+- `stockwatch/config/`
+- `stockwatch/utils/`
 
-## Menjalankan
+Entry points:
+- `main.py`
+- `run_jobs.py`
+- `streamlit_app.py`
+- `stockwatchctl`
+
+## Data Sources
+
+### Symbols
+
+- KSEI master securities for full IDX symbol universe
+
+### Events
+
+- `KSEI calendar/detail`
+  - best for dividend and date-structured event records
+- `KSEI publications`
+  - `meeting-announcement`
+  - `meeting-convocation`
+  - `minutes-of-meeting`
+  - `rights-distribution`
+  - `masr`
+
+### Market Prices
+
+- `Yahoo Finance` for selective `.JK` market prices
+- `TradingView most active Indonesia` for dynamic priority universe
+
+### Coverage Notes
+
+- Full symbol universe is loaded from KSEI
+- Event coverage is broader than before because it combines KSEI calendar plus KSEI publications
+- Market price collection is selective, not full-market by default
+- Event-only symbols auto-expand into the active market universe when needed
+
+## Repository Layout
+
+```text
+stockwatch/
+├── data/
+├── deploy/
+│   └── systemd/
+├── docs/
+├── stockwatch/
+│   ├── bot/
+│   ├── collectors/
+│   ├── config/
+│   ├── jobs/
+│   ├── notifiers/
+│   ├── parsers/
+│   ├── signals/
+│   ├── storage/
+│   └── utils/
+├── main.py
+├── run_jobs.py
+├── stockwatchctl
+└── streamlit_app.py
+```
+
+## Quick Start
 
 ```bash
 cd /home/kac0/project/stockwatch
@@ -91,23 +145,55 @@ cp .env.example .env
 ./stockwatchctl
 ```
 
-Cara paling simple setelah setup:
+Default behavior:
+- `./stockwatchctl` runs `all-in-one`
+- admin port defaults to `8501`
+- admin port can be overridden with `STOCKWATCH_ADMIN_PORT` in `.env`
+
+After initial setup, the simplest run command is:
 
 ```bash
 cd /home/kac0/project/stockwatch
 ./stockwatchctl
 ```
 
-Tanpa activate shell manual, script ini akan langsung memakai interpreter project di `.venv`.
-Port admin bisa disimpan di `.env` lewat `STOCKWATCH_ADMIN_PORT`. Jika tidak diisi, default tetap `8501`.
+## Runtime Modes
 
-## Menjalankan scheduler
+- `./stockwatchctl bootstrap`
+  - initialize DB, collect symbols, collect events, collect market
+- `./stockwatchctl worker`
+  - scheduler only
+- `./stockwatchctl bot`
+  - Telegram command bot only
+- `./stockwatchctl ops`
+  - scheduler + Telegram bot
+- `./stockwatchctl admin`
+  - Streamlit admin only
+- `./stockwatchctl`
+  - default `all-in-one`
+- `./stockwatchctl all-in-one`
+  - scheduler + Telegram bot + Streamlit admin
+- `./stockwatchctl job collect-events`
+  - run a single job directly
 
-```bash
-./stockwatchctl worker
-```
+## Scheduled Jobs
 
-## Job yang tersedia
+Current schedule:
+- `07:30 WIB` morning summary
+- `07:50 WIB` collect symbols
+- `08:00 WIB` collect events
+- `08:05 WIB` collect market
+- `08:10 WIB` dividend alerts
+- `09:00-15:30 WIB` watchlist alerts every 30 minutes
+- `09:15-15:45 WIB` unusual activity every 30 minutes
+- `16:30 WIB` end-of-day summary
+- `18:00 WIB` collect events
+- `18:05 WIB` collect market
+- `19:15 WIB` corporate action alerts
+
+Manual triggers from Telegram or admin panel run immediately and do not wait for the schedule.
+
+## Available Jobs
 
 - `init-db`
 - `collect-symbols`
@@ -117,12 +203,68 @@ Port admin bisa disimpan di `.env` lewat `STOCKWATCH_ADMIN_PORT`. Jika tidak dii
 - `dividend-alerts`
 - `corporate-actions`
 - `watchlist-alerts`
+- `unusual-activity`
 - `market-summary --session morning`
 - `market-summary --session eod`
 - `scheduler`
 
-## Admin Panel Actions
+## Telegram Bot Commands
 
+### Navigation
+
+- `/menu`
+- `/help`
+- `/status`
+
+### Data
+
+- `/symbols`
+- `/symbols_find QUERY`
+- `/events`
+- `/market`
+
+### Collection
+
+- `/collect_symbols`
+- `/collect_events`
+- `/collect_market`
+- `/collect_all`
+
+### Alerts
+
+- `/dividend_alerts`
+- `/corporate_actions`
+- `/watchlist_alerts`
+- `/unusual_activity`
+
+### Summary
+
+- `/summary_morning`
+- `/summary_eod`
+
+### Watchlist CRUD
+
+- `/watchlist_show`
+- `/watchlist_help`
+- `/watchlist_add BBCA price_above > 10000`
+- `/watchlist_update 1 BBCA price_above > 10200 0 high on`
+- `/watchlist_delete 1`
+- `/watchlist_enable 1`
+- `/watchlist_disable 1`
+
+Inline buttons are also available for common actions, data browsing, and refresh jobs.
+
+## Admin Panel
+
+The admin panel is intentionally lightweight. It is meant for:
+- viewing active events
+- viewing event updates
+- viewing recent alerts
+- viewing recent jobs
+- editing watchlist rules
+- manually triggering jobs
+
+Typical actions available in admin:
 - `Init DB`
 - `Collect symbols`
 - `Collect events`
@@ -135,52 +277,42 @@ Port admin bisa disimpan di `.env` lewat `STOCKWATCH_ADMIN_PORT`. Jika tidak dii
 - `Run morning summary`
 - `Run EOD summary`
 
-## Telegram Bot Commands
+## Configuration
 
-- `/help`
-- `/status`
-- `/collect_symbols`
-- `/collect_events`
-- `/collect_market`
-- `/collect_all`
-- `/dividend_alerts`
-- `/corporate_actions`
-- `/watchlist_alerts`
-- `/unusual_activity`
-- `/summary_morning`
-- `/summary_eod`
-- `/watchlist_show`
-- `/watchlist_help`
-- `/watchlist_add BBCA price_above > 10000`
-- `/watchlist_update 1 BBCA price_above > 10200 0 high on`
-- `/watchlist_delete 1`
-- `/watchlist_enable 1`
-- `/watchlist_disable 1`
-- `/menu`
+Example `.env`:
 
-Bot juga mendukung `inline buttons` untuk operasi cepat, jadi Anda tidak harus mengetik command manual setiap kali.
-Menu tombol sekarang bertingkat: `System`, `Collect`, `Alerts`, `Summary`, dan `Watchlist`.
+```dotenv
+STOCKWATCH_DB_PATH=data/stockwatch.db
+STOCKWATCH_ENV=dev
+STOCKWATCH_ADMIN_PORT=8501
 
-## Entry point sederhana
+TELEGRAM_BOT_TOKEN=replace_me
+TELEGRAM_CHAT_ID=replace_me
+TELEGRAM_ENABLED=false
+TELEGRAM_COMMANDS_ENABLED=true
+TELEGRAM_COMMAND_CHAT_IDS=-5168829564
 
-- `./stockwatchctl bootstrap`
-  - inisialisasi DB lalu jalankan `collect-symbols`, `collect-events`, dan `collect-market`
-- `./stockwatchctl worker`
-  - jalankan scheduler saja
-- `./stockwatchctl bot`
-  - jalankan Telegram command bot saja
-- `./stockwatchctl ops`
-  - jalankan scheduler + Telegram command bot
-- `./stockwatchctl admin`
-  - jalankan admin panel saja
-- `./stockwatchctl`
-  - default = `all-in-one`
-- `./stockwatchctl all-in-one`
-  - jalankan scheduler + Telegram command bot + admin panel dalam satu command
+ALERT_MIN_SEVERITY=medium
+ALERT_MAX_PER_DAY=20
 
-## Deploy ke VPS production
+WATCHLIST_RULES_PATH=data/watchlist_rules.json
 
-Paling sederhana:
+MARKET_PRIORITY_SYMBOLS_PATH=data/bootstrap_symbols.csv
+MARKET_PRIORITY_LIMIT=100
+
+KSEI_CALENDAR_MONTHS_AHEAD=1
+KSEI_PUBLICATION_MONTHS_BACK=1
+KSEI_PUBLICATION_MAX_AGE_DAYS=45
+```
+
+Key notes:
+- `TELEGRAM_COMMAND_CHAT_IDS` limits which chats can execute bot commands
+- `STOCKWATCH_ADMIN_PORT` defaults to `8501` if omitted
+- `MARKET_PRIORITY_SYMBOLS_PATH` is a fallback priority universe, not the primary live source
+
+## Deployment
+
+### Simple VPS Run
 
 ```bash
 cd /opt/stockwatch
@@ -193,17 +325,15 @@ nano .env
 ./stockwatchctl
 ```
 
-Untuk production yang lebih rapi, gunakan `systemd` dan biasanya pisahkan:
+### Recommended Production Layout
 
-- `stockwatch-ops`: `./stockwatchctl ops`
-- `stockwatch-admin`: `./stockwatchctl admin --port 8501`
+Use two `systemd` services:
+- `stockwatch-ops`
+- `stockwatch-admin`
 
-`all-in-one` saya sediakan untuk kemudahan single-command, tetapi secara operasional 2 service tetap lebih kuat karena restart dan observability lebih bersih.
+This is more stable than a single `all-in-one` service because scheduler/bot and admin restart independently.
 
-### systemd
-
-File service siap pakai ada di:
-
+Ready-made service files:
 - `deploy/systemd/stockwatch-ops.service`
 - `deploy/systemd/stockwatch-admin.service`
 - `deploy/systemd/stockwatch-all-in-one.service`
@@ -211,31 +341,7 @@ File service siap pakai ada di:
 - `deploy/systemd/stockwatch-admin.local.service`
 - `deploy/systemd/stockwatch-all-in-one.local.service`
 
-Arti file:
-
-- `*.service`
-  - template generic untuk deploy repo di `/opt/stockwatch`
-- `*.local.service`
-  - unit yang sudah diisi untuk host ini:
-    - `User=kac0`
-    - `Group=kali`
-    - `WorkingDirectory=/home/kac0/project/stockwatch`
-    - `ExecStart=/home/kac0/project/stockwatch/stockwatchctl ...`
-
-Sebelum dipakai, edit dulu nilai berikut sesuai server Anda:
-
-- `User=`
-- `Group=`
-- `WorkingDirectory=`
-- `ExecStart=`
-
-Rekomendasi production:
-
-- aktifkan `stockwatch-ops.service`
-- aktifkan `stockwatch-admin.service`
-- jangan aktifkan `stockwatch-all-in-one.service` bersamaan
-
-Contoh deploy:
+### Generic systemd Deploy
 
 ```bash
 cd /opt/stockwatch
@@ -248,16 +354,16 @@ sudo systemctl status stockwatch-ops
 sudo systemctl status stockwatch-admin
 ```
 
-Lihat log:
+View logs:
 
 ```bash
 sudo journalctl -u stockwatch-ops -f
 sudo journalctl -u stockwatch-admin -f
 ```
 
-### systemd untuk host ini
+### Host-Ready systemd Files
 
-Kalau Anda ingin langsung pakai pada host saat ini tanpa edit file service:
+For the current host:
 
 ```bash
 cd /home/kac0/project/stockwatch
@@ -266,67 +372,41 @@ sudo cp deploy/systemd/stockwatch-admin.local.service /etc/systemd/system/stockw
 sudo systemctl daemon-reload
 sudo systemctl enable --now stockwatch-ops
 sudo systemctl enable --now stockwatch-admin
-sudo systemctl status stockwatch-ops
-sudo systemctl status stockwatch-admin
 ```
 
-Jika Anda ingin single-service mode di host ini:
+If you want single-service mode on this host:
 
 ```bash
 cd /home/kac0/project/stockwatch
 sudo cp deploy/systemd/stockwatch-all-in-one.local.service /etc/systemd/system/stockwatch-all-in-one.service
 sudo systemctl daemon-reload
 sudo systemctl enable --now stockwatch-all-in-one
-sudo systemctl status stockwatch-all-in-one
 ```
 
-Jangan aktifkan `stockwatch-all-in-one` bersamaan dengan `stockwatch-ops` + `stockwatch-admin`.
-
-## Konfigurasi Telegram
-
-Gunakan `.env`:
-
-```dotenv
-TELEGRAM_BOT_TOKEN=replace_me
-TELEGRAM_CHAT_ID=replace_me
-TELEGRAM_COMMANDS_ENABLED=true
-TELEGRAM_COMMAND_CHAT_IDS=-5168829564
-STOCKWATCH_ADMIN_PORT=8501
-WATCHLIST_RULES_PATH=data/watchlist_rules.json
-MARKET_PRIORITY_SYMBOLS_PATH=data/bootstrap_symbols.csv
-MARKET_PRIORITY_LIMIT=100
-KSEI_CALENDAR_MONTHS_AHEAD=1
-KSEI_PUBLICATION_MONTHS_BACK=1
-KSEI_PUBLICATION_MAX_AGE_DAYS=45
-```
-
-Credential tidak di-hardcode di source code final.
-
-`TELEGRAM_COMMAND_CHAT_IDS` membatasi chat mana yang boleh menjalankan command bot. Untuk harian, admin panel jadi opsional kalau command Telegram ini sudah cukup.
+Do not enable `stockwatch-all-in-one` together with `stockwatch-ops` + `stockwatch-admin`.
 
 ## Troubleshooting
 
-### Bot Telegram tidak merespons
+### Bot Does Not Respond
 
-- pastikan service/proses `ops` atau `bot` sedang jalan
-- cek log: `sudo journalctl -u stockwatch-ops -f`
-- coba test lokal: `./stockwatchctl python -c "import yfinance, stockwatch; print('ok')"`
+- ensure `ops` or `bot` is running
+- check logs with `journalctl`
+- verify Telegram credentials in `.env`
 
-### Port admin sudah dipakai
+### Admin Port Already in Use
 
-- ubah `STOCKWATCH_ADMIN_PORT` di `.env`
-- atau hentikan proses lama yang masih memakai port itu
+- change `STOCKWATCH_ADMIN_PORT` in `.env`
+- or stop the old process/service using that port
 
-### Kena rate limit Telegram
+### Telegram 429 Rate Limit
 
-- bot sekarang sudah retry otomatis untuk `429`
-- jika masih sering terjadi, kurangi trigger manual beruntun
-- cek log service untuk melihat frekuensi alert yang terlalu rapat
+- the bot retries automatically
+- avoid running many manual triggers in quick succession
+- check service logs if repeated rate limits occur
 
-### Setelah pindah folder repo, virtualenv bermasalah
+### Virtualenv Broken After Moving the Repo
 
-- virtualenv Python menyimpan path absolut
-- solusi paling aman:
+Python virtualenv stores absolute paths. Recreate it:
 
 ```bash
 python3 -m venv .venv
@@ -334,50 +414,26 @@ source .venv/bin/activate
 python -m pip install -e .
 ```
 
-### Reset operasional dasar
+### Reset Basic Operations
 
 ```bash
 ./stockwatchctl bootstrap
 ./stockwatchctl ops
 ```
 
-## Sumber event production
+## Current Limitations
 
-Untuk production, alert event tidak lagi mengambil data dari sample/seed CSV.
+- Dividend `ex-date` is still estimated as the next business day after `cum-date`
+- IDX official disclosure is not yet the primary source because access from this server is blocked by Cloudflare
+- Corporate action coverage is now much broader via KSEI publications, but still not identical to all IDX disclosures
+- Watchlist rules are still file-based under the hood
+- Admin panel is operational, not a full production-grade control panel with auth/roles
 
-- `Dividend / corporate action events`: live collector dari `web.ksei.co.id`
-  - `KSEI calendar/detail` untuk dividend dan tanggal corporate action yang terstruktur
-  - `KSEI publications` untuk `meeting-announcement`, `meeting-convocation`, `minutes-of-meeting`, `rights-distribution`, dan `masr`
-- `Symbol universe`: master securities live dari KSEI untuk seluruh emiten IDX aktif
-- `Market prices`: live snapshot dari `yfinance` hanya untuk simbol yang relevan dengan alert engine:
-  - simbol watchlist
-  - simbol event aktif dari KSEI
-  - priority/liquid universe live dari TradingView `most active Indonesian stocks`
-  - auto-expand jika KSEI menemukan simbol event baru di luar priority universe
-  - fallback ke `MARKET_PRIORITY_SYMBOLS_PATH` jika source live priority universe gagal
+## Documentation
 
-File bootstrap event di folder `data/` kini hanya berfungsi sebagai contoh format data atau cadangan dev, bukan sumber alert production.
+- System design: [docs/telegram-alert-engine.md](docs/telegram-alert-engine.md)
+- Operations manual: [docs/operations-manual.md](docs/operations-manual.md)
 
-## Batasan MVP Saat Ini
+## License
 
-- `Ex-date` dividend dari KSEI saat ini masih diestimasi sebagai next business day setelah `cum-date`
-- source IDX disclosure resmi belum dijadikan jalur utama karena akses dari server ini diblokir Cloudflare
-- corporate action coverage sekarang jauh lebih luas lewat publikasi resmi KSEI, tetapi masih belum identik 100% dengan seluruh keterbukaan informasi IDX
-- watchlist rules masih berbasis file JSON, belum CRUD penuh dari admin
-- admin panel masih fokus observability, belum role/auth production
-
-## Jadwal otomatis
-
-- `07:30 WIB` morning summary
-- `07:50 WIB` collect symbols
-- `08:00 WIB` collect events
-- `08:05 WIB` collect market
-- `08:10 WIB` dividend alerts
-- `09:00-15:30 WIB` watchlist alerts per 30 menit
-- `09:15-15:45 WIB` unusual activity per 30 menit
-- `16:30 WIB` end-of-day summary
-- `18:00 WIB` collect events
-- `18:05 WIB` collect market
-- `19:15 WIB` corporate action alerts
-
-Jika Anda menekan tombol `Run dividend alerts` di admin panel, job dijalankan saat itu juga. Itu manual trigger, jadi tidak menunggu jadwal `08:10 WIB`.
+Internal project unless you define otherwise.
