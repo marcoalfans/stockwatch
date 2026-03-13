@@ -24,6 +24,7 @@ class Settings:
     telegram_command_chat_ids: tuple[str, ...]
     telegram_poll_timeout_seconds: int
     telegram_command_workers: int
+    telegram_force_ipv4: bool
     alert_min_severity: str
     alert_max_per_day: int
     watchlist_rules_path: Path
@@ -50,6 +51,7 @@ def get_settings() -> Settings:
         ),
         telegram_poll_timeout_seconds=int(os.getenv("TELEGRAM_POLL_TIMEOUT_SECONDS", "10")),
         telegram_command_workers=int(os.getenv("TELEGRAM_COMMAND_WORKERS", "4")),
+        telegram_force_ipv4=os.getenv("TELEGRAM_FORCE_IPV4", "true").lower() == "true",
         alert_min_severity=os.getenv("ALERT_MIN_SEVERITY", "medium").lower(),
         alert_max_per_day=int(os.getenv("ALERT_MAX_PER_DAY", "20")),
         watchlist_rules_path=BASE_DIR / os.getenv("WATCHLIST_RULES_PATH", "data/watchlist_rules.json"),

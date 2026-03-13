@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+from contextlib import contextmanager
 import json
+import socket
 import time
 
 import requests
+import urllib3.util.connection
 
 from stockwatch.config import get_settings
 
@@ -95,7 +98,8 @@ def telegram_api_request(method: str, payload: dict) -> dict:
     total_wait_seconds = 0
     max_total_wait_seconds = 8
     for attempt in range(1, attempts + 1):
-        response = requests.post(url, json=payload, timeout=35)
+        with _force_ipv4_if_enabled(settings.telegram_force_ipv4):
+            response = requests.post(url, json=payload, timeout=35)
         if response.status_code == 429:
             retry_after = 3
             try:
@@ -115,3 +119,16 @@ def telegram_api_request(method: str, payload: dict) -> dict:
 
 def safe_response_payload(payload: dict) -> str:
     return json.dumps(payload, default=str)[:1000]
+
+
+@contextmanager
+def _force_ipv4_if_enabled(enabled: bool):
+    if not enabled:
+        yield
+        return
+    original = urllib3.util.connection.allowed_gai_family
+    urllib3.util.connection.allowed_gai_family = lambda: socket.AF_INET
+    try:
+        yield
+    finally:
+        urllib3.util.connection.allowed_gai_family = original
