@@ -5,10 +5,10 @@ from hashlib import sha256
 
 import pandas as pd
 
-from stocklab.storage.db import connection, read_sql, write_dataframe
+from stockwatch.storage.db import connection, read_sql, write_dataframe
 
 
-class StockLabRepository:
+class StockWatchRepository:
     def replace_symbols(self, frame: pd.DataFrame) -> None:
         write_dataframe("symbols", frame, replace=True)
 

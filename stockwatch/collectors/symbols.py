@@ -7,12 +7,12 @@ from bs4 import BeautifulSoup
 import pandas as pd
 import requests
 
-from stocklab.config.settings import BASE_DIR
+from stockwatch.config.settings import BASE_DIR
 
 
 KSEI_ARCHIVE_URL = "https://web.ksei.co.id/archive_download/master_securities"
 KSEI_BASE_URL = "https://web.ksei.co.id"
-USER_AGENT = "StockLab/0.1 (+https://example.local)"
+USER_AGENT = "StockWatch/0.1 (+https://example.local)"
 
 
 def collect_symbols() -> pd.DataFrame:

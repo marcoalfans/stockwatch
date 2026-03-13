@@ -6,24 +6,24 @@ import shlex
 import time
 from html import escape
 
-from stocklab.config import get_settings
-from stocklab.jobs.alerts import (
+from stockwatch.config import get_settings
+from stockwatch.jobs.alerts import (
     run_corporate_action_alerts_manual,
     run_dividend_alerts_manual,
     run_market_summary_manual,
     run_unusual_activity_alerts_manual,
     run_watchlist_alerts_manual,
 )
-from stocklab.jobs.runner import run_job
-from stocklab.notifiers.telegram import (
+from stockwatch.jobs.runner import run_job
+from stockwatch.notifiers.telegram import (
     TelegramRateLimitError,
     get_telegram_updates,
     safe_answer_callback_query,
     send_telegram_message,
 )
-from stocklab.storage.db import init_db
-from stocklab.storage.repository import StockLabRepository
-from stocklab.utils.watchlist_rules import (
+from stockwatch.storage.db import init_db
+from stockwatch.storage.repository import StockWatchRepository
+from stockwatch.utils.watchlist_rules import (
     WATCHLIST_OPERATORS,
     WATCHLIST_PRIORITIES,
     WATCHLIST_RULE_TYPES,
@@ -39,7 +39,7 @@ from stocklab.utils.watchlist_rules import (
 logger = logging.getLogger(__name__)
 
 
-HELP_TEXT = """<b>StockLab Commands</b>
+HELP_TEXT = """<b>StockWatch Commands</b>
 
 <b>Navigation</b>
 • <code>/menu</code> open control menu
@@ -124,7 +124,7 @@ MANUAL_ALERT_COMMANDS = {
 }
 
 MENU_TEXT = {
-    "main": "<b>StockLab Control</b>\nPilih menu di bawah.",
+    "main": "<b>StockWatch Control</b>\nPilih menu di bawah.",
     "data": "<b>📊 Data Browser</b>\nLihat symbols, market universe, dan active events.",
     "collect": "<b>📥 Collect Jobs</b>\nJalankan refresh data yang Anda butuhkan.",
     "symbols": "<b>🏷️ IDX Symbols</b>\nLihat daftar symbol atau cari symbol tertentu.",
@@ -224,7 +224,7 @@ def _handle_update(update: dict) -> None:
 
     settings = get_settings()
     if settings.telegram_command_chat_ids and chat_id not in settings.telegram_command_chat_ids:
-        send_telegram_message("Unauthorized chat for StockLab commands.", chat_id=chat_id)
+        send_telegram_message("Unauthorized chat for StockWatch commands.", chat_id=chat_id)
         return
 
     command_text = text.split("@", 1)[0]
@@ -310,7 +310,7 @@ def _dispatch_command(command_text: str) -> tuple[str, dict | None]:
 
 
 def _build_status_message() -> str:
-    repo = StockLabRepository()
+    repo = StockWatchRepository()
     jobs = repo.get_recent_jobs(limit=5)
     alerts = repo.get_recent_alerts(limit=5)
     active_events = repo.get_active_events()
@@ -326,7 +326,7 @@ def _build_status_message() -> str:
 
     return "\n".join(
         [
-            "<b>⚙️ StockLab Status</b>",
+            "<b>⚙️ StockWatch Status</b>",
             "────────────",
             f"• Active Events: <code>{len(active_events)}</code>",
             f"• Market Symbols: <code>{latest_prices['symbol'].nunique() if not latest_prices.empty else 0}</code>",
@@ -371,7 +371,7 @@ def _build_symbols_help_message() -> str:
 
 
 def _build_symbols_message(page: int = 0, page_size: int = 15) -> str:
-    repo = StockLabRepository()
+    repo = StockWatchRepository()
     symbols = repo.get_symbols()
     if symbols.empty:
         return "<b>🏷️ IDX Symbols</b>\n────────────\n• no symbols loaded"
@@ -400,7 +400,7 @@ def _build_symbols_search_message(args: list[str], limit: int = 20) -> str:
     if not args:
         return "Usage: <code>/symbols_find QUERY</code>"
     query = " ".join(args).strip().lower()
-    repo = StockLabRepository()
+    repo = StockWatchRepository()
     symbols = repo.get_symbols()
     if symbols.empty:
         return "<b>🏷️ IDX Symbols</b>\n────────────\n• no symbols loaded"
@@ -439,7 +439,7 @@ def _build_symbols_search_message(args: list[str], limit: int = 20) -> str:
 
 
 def _build_events_message(page: int = 0, page_size: int = 10) -> str:
-    repo = StockLabRepository()
+    repo = StockWatchRepository()
     events = repo.get_active_events()
     if events.empty:
         return "<b>📅 Active Events</b>\n────────────\n• no active events"
@@ -469,7 +469,7 @@ def _build_events_message(page: int = 0, page_size: int = 10) -> str:
 
 
 def _build_market_message(page: int = 0, page_size: int = 15) -> str:
-    repo = StockLabRepository()
+    repo = StockWatchRepository()
     prices = repo.get_latest_prices()
     if prices.empty:
         return "<b>📈 Market Universe</b>\n────────────\n• no market prices loaded"
@@ -504,7 +504,7 @@ def _build_market_message(page: int = 0, page_size: int = 15) -> str:
 def _format_job_result(command: str, result: dict) -> str:
     return "\n".join(
         [
-            "<b>✅ StockLab Command</b>",
+            "<b>✅ StockWatch Command</b>",
             "────────────",
             f"• Command: <code>/{command}</code>",
             f"• Status: <code>{result.get('status', '-')}</code>",
@@ -517,7 +517,7 @@ def _format_manual_alert_result(command: str, sent: int) -> str:
     if sent > 0:
         return "\n".join(
             [
-                "<b>✅ StockLab Command</b>",
+                "<b>✅ StockWatch Command</b>",
                 "────────────",
                 f"• Command: <code>/{command}</code>",
                 f"• Result: <code>{sent} alert(s) sent</code>",
@@ -525,7 +525,7 @@ def _format_manual_alert_result(command: str, sent: int) -> str:
         )
     return "\n".join(
         [
-            "<b>ℹ️ StockLab Command</b>",
+            "<b>ℹ️ StockWatch Command</b>",
             "────────────",
             f"• Command: <code>/{command}</code>",
             "• Result: <code>No alert matched</code>",
@@ -543,7 +543,7 @@ def _menu_keyboard(menu_name: str) -> dict:
 
 
 def _symbols_keyboard(page: int, page_size: int = 15) -> dict:
-    repo = StockLabRepository()
+    repo = StockWatchRepository()
     symbols = repo.get_symbols()
     total = len(symbols)
     max_page = max((total - 1) // page_size, 0)
@@ -564,7 +564,7 @@ def _symbols_keyboard(page: int, page_size: int = 15) -> dict:
 
 
 def _events_keyboard(page: int, page_size: int = 10) -> dict:
-    repo = StockLabRepository()
+    repo = StockWatchRepository()
     events = repo.get_active_events()
     total = len(events)
     max_page = max((total - 1) // page_size, 0)
@@ -585,7 +585,7 @@ def _events_keyboard(page: int, page_size: int = 10) -> dict:
 
 
 def _market_keyboard(page: int, page_size: int = 15) -> dict:
-    repo = StockLabRepository()
+    repo = StockWatchRepository()
     prices = repo.get_latest_prices()
     total = len(prices)
     max_page = max((total - 1) // page_size, 0)
@@ -757,19 +757,19 @@ def _parse_watchlist_rule_args(args: list[str], enabled: bool = True) -> dict | 
 
 def _load_watchlist_config():
     settings = get_settings()
-    repo = StockLabRepository()
+    repo = StockWatchRepository()
     return load_watchlist_rules(settings.watchlist_rules_path, repo.get_watchlist_rules(), valid_symbols=_valid_symbols())
 
 
 def _save_watchlist_config(frame) -> None:
     settings = get_settings()
-    repo = StockLabRepository()
+    repo = StockWatchRepository()
     write_watchlist_rules(settings.watchlist_rules_path, frame)
     repo.replace_watchlist_rules(frame)
 
 
 def _valid_symbols() -> set[str]:
-    repo = StockLabRepository()
+    repo = StockWatchRepository()
     symbols = repo.get_symbols()
     return set(symbols["symbol"].dropna().astype(str).str.strip().tolist())
 

@@ -11,7 +11,7 @@ import requests
 
 
 BASE_URL = "https://web.ksei.co.id"
-USER_AGENT = "StockLab/0.1 (+https://example.local)"
+USER_AGENT = "StockWatch/0.1 (+https://example.local)"
 REQUEST_RETRIES = 3
 REQUEST_BACKOFF_SECONDS = 1.5
 

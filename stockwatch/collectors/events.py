@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pandas as pd
 
-from stocklab.collectors.ksei import collect_live_ksei_events
-from stocklab.parsers.events import normalize_events
+from stockwatch.collectors.ksei import collect_live_ksei_events
+from stockwatch.parsers.events import normalize_events
 
 
 def collect_live_events(symbols: pd.DataFrame) -> pd.DataFrame:

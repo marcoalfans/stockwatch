@@ -3,15 +3,15 @@ from __future__ import annotations
 from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.triggers.cron import CronTrigger
 
-from stocklab.jobs.alerts import (
+from stockwatch.jobs.alerts import (
     run_corporate_action_alerts,
     run_dividend_alerts,
     run_market_summary,
     run_unusual_activity_alerts,
     run_watchlist_alerts,
 )
-from stocklab.jobs.bootstrap import run_collect_events, run_collect_market, run_collect_symbols
-from stocklab.storage.repository import StockLabRepository
+from stockwatch.jobs.bootstrap import run_collect_events, run_collect_market, run_collect_symbols
+from stockwatch.storage.repository import StockWatchRepository
 
 
 def run_scheduler() -> None:
@@ -31,7 +31,7 @@ def run_scheduler() -> None:
 
 
 def _run_scheduled_job(name: str, session: str | None = None) -> None:
-    repo = StockLabRepository()
+    repo = StockWatchRepository()
     job_run_id = repo.start_job_run(name)
     try:
         if name == "collect-symbols":

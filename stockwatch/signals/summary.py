@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from stocklab.utils.dates import days_until
+from stockwatch.utils.dates import days_until
 
 
 def build_market_summary(repo, session: str) -> dict:

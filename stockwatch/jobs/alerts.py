@@ -4,20 +4,20 @@ from datetime import date
 
 import pandas as pd
 
-from stocklab.config import get_settings
-from stocklab.notifiers.formatter import (
+from stockwatch.config import get_settings
+from stockwatch.notifiers.formatter import (
     format_corporate_action_alert,
     format_dividend_alert,
     format_market_summary,
     format_unusual_activity_alert,
     format_watchlist_alert,
 )
-from stocklab.notifiers.telegram import safe_response_payload, send_telegram_message
-from stocklab.signals.dividend import build_dividend_reminders
-from stocklab.signals.summary import build_market_summary
-from stocklab.signals.unusual import detect_unusual_activity
-from stocklab.signals.watchlist import evaluate_watchlist_rules
-from stocklab.storage.repository import StockLabRepository
+from stockwatch.notifiers.telegram import safe_response_payload, send_telegram_message
+from stockwatch.signals.dividend import build_dividend_reminders
+from stockwatch.signals.summary import build_market_summary
+from stockwatch.signals.unusual import detect_unusual_activity
+from stockwatch.signals.watchlist import evaluate_watchlist_rules
+from stockwatch.storage.repository import StockWatchRepository
 
 
 SEVERITY_RANK = {"low": 0, "medium": 1, "high": 2}
@@ -28,7 +28,7 @@ def run_dividend_alerts() -> int:
 
 
 def _run_dividend_alerts(manual_trigger: bool) -> int:
-    repo = StockLabRepository()
+    repo = StockWatchRepository()
     events = repo.get_active_events("dividend")
     prices = repo.get_latest_prices()
     reminders = build_dividend_reminders(events, prices)
@@ -40,7 +40,7 @@ def run_corporate_action_alerts() -> int:
 
 
 def _run_corporate_action_alerts(manual_trigger: bool) -> int:
-    repo = StockLabRepository()
+    repo = StockWatchRepository()
     sent = 0
     events = repo.get_active_events()
     active_dividends = repo.get_active_events("dividend")
@@ -107,7 +107,7 @@ def run_watchlist_alerts() -> int:
 
 
 def _run_watchlist_alerts(manual_trigger: bool) -> int:
-    repo = StockLabRepository()
+    repo = StockWatchRepository()
     alerts = evaluate_watchlist_rules(
         rules=repo.get_watchlist_rules(),
         latest_prices=repo.get_latest_prices(),
@@ -122,7 +122,7 @@ def run_unusual_activity_alerts() -> int:
 
 
 def _run_unusual_activity_alerts(manual_trigger: bool) -> int:
-    repo = StockLabRepository()
+    repo = StockWatchRepository()
     alerts = detect_unusual_activity(repo)
     return _dispatch(repo, alerts, formatter=format_unusual_activity_alert, manual_trigger=manual_trigger)
 
@@ -132,7 +132,7 @@ def run_market_summary(session: str) -> int:
 
 
 def _run_market_summary(session: str, manual_trigger: bool) -> int:
-    repo = StockLabRepository()
+    repo = StockWatchRepository()
     summary = build_market_summary(repo, session)
     payload = {
         "alert_type": f"market_summary_{session}",
@@ -170,7 +170,7 @@ def run_market_summary_manual(session: str) -> int:
     return _run_market_summary(session=session, manual_trigger=True)
 
 
-def _dispatch(repo: StockLabRepository, alerts: list[dict], formatter, manual_trigger: bool = False) -> int:
+def _dispatch(repo: StockWatchRepository, alerts: list[dict], formatter, manual_trigger: bool = False) -> int:
     sent = 0
     for payload in alerts:
         sent += _send_once(repo=repo, payload=payload, formatter=formatter, manual_trigger=manual_trigger)
@@ -178,7 +178,7 @@ def _dispatch(repo: StockLabRepository, alerts: list[dict], formatter, manual_tr
 
 
 def _send_once(
-    repo: StockLabRepository,
+    repo: StockWatchRepository,
     payload: dict,
     formatter,
     dedup_suffix: str = "",

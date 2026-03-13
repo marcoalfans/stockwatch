@@ -4,7 +4,7 @@ import operator
 
 import pandas as pd
 
-from stocklab.utils.dates import days_until
+from stockwatch.utils.dates import days_until
 
 
 OPS = {

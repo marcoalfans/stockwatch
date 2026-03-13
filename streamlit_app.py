@@ -6,19 +6,19 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
-from stocklab.config import get_settings
-from stocklab.jobs.bootstrap import run_collect_all, run_collect_events, run_collect_market, run_collect_symbols
-from stocklab.jobs.alerts import (
+from stockwatch.config import get_settings
+from stockwatch.jobs.bootstrap import run_collect_all, run_collect_events, run_collect_market, run_collect_symbols
+from stockwatch.jobs.alerts import (
     run_corporate_action_alerts_manual,
     run_dividend_alerts_manual,
     run_market_summary_manual,
     run_unusual_activity_alerts_manual,
     run_watchlist_alerts_manual,
 )
-from stocklab.signals.watchlist import evaluate_watchlist_rules
-from stocklab.storage.db import init_db
-from stocklab.storage.repository import StockLabRepository
-from stocklab.utils.watchlist_rules import (
+from stockwatch.signals.watchlist import evaluate_watchlist_rules
+from stockwatch.storage.db import init_db
+from stockwatch.storage.repository import StockWatchRepository
+from stockwatch.utils.watchlist_rules import (
     WATCHLIST_OPERATORS,
     WATCHLIST_PRIORITIES,
     WATCHLIST_RULE_TYPES,
@@ -28,14 +28,14 @@ from stocklab.utils.watchlist_rules import (
 )
 
 
-st.set_page_config(page_title="StockLab Admin", page_icon="SL", layout="wide")
+st.set_page_config(page_title="StockWatch Admin", page_icon="SW", layout="wide")
 init_db()
-repo = StockLabRepository()
+repo = StockWatchRepository()
 settings = get_settings()
 symbol_options = repo.get_symbols()["symbol"].dropna().astype(str).str.strip().sort_values().tolist()
 valid_symbols = set(symbol_options)
 
-st.title("StockLab Admin")
+st.title("StockWatch Admin")
 st.caption("Telegram-first IHSG alert engine. Admin panel ini hanya untuk observability dan operasi dasar.")
 
 with st.sidebar:

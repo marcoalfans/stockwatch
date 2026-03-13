@@ -32,8 +32,8 @@ class Settings:
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
     return Settings(
-        env=os.getenv("STOCKLAB_ENV", "dev"),
-        db_path=BASE_DIR / os.getenv("STOCKLAB_DB_PATH", "data/stocklab.db"),
+        env=os.getenv("STOCKWATCH_ENV", "dev"),
+        db_path=BASE_DIR / os.getenv("STOCKWATCH_DB_PATH", "data/stockwatch.db"),
         telegram_bot_token=os.getenv("TELEGRAM_BOT_TOKEN", ""),
         telegram_chat_id=os.getenv("TELEGRAM_CHAT_ID", ""),
         telegram_enabled=os.getenv("TELEGRAM_ENABLED", "false").lower() == "true",

@@ -1,26 +1,30 @@
 from __future__ import annotations
 
-from stocklab.jobs.alerts import (
+from stockwatch.jobs.alerts import (
     run_corporate_action_alerts,
     run_dividend_alerts,
     run_market_summary,
     run_unusual_activity_alerts,
     run_watchlist_alerts,
 )
-from stocklab.jobs.bootstrap import run_collect_all, run_collect_events, run_collect_market, run_collect_symbols
-from stocklab.jobs.scheduler import run_scheduler
-from stocklab.storage.db import init_db
-from stocklab.storage.repository import StockLabRepository
+from stockwatch.jobs.bootstrap import run_collect_all, run_collect_events, run_collect_market, run_collect_symbols
+from stockwatch.jobs.scheduler import run_scheduler
+from stockwatch.storage.db import init_db
+from stockwatch.storage.repository import StockWatchRepository
 
 
 def run_job(name: str, session: str | None = None) -> dict:
-    repo = StockLabRepository()
+    if name == "init-db":
+        path = init_db()
+        repo = StockWatchRepository()
+        job_run_id = repo.start_job_run(name)
+        repo.finish_job_run(job_run_id, "ok", str(path))
+        return {"status": "ok", "notes": str(path)}
+
+    repo = StockWatchRepository()
     job_run_id = repo.start_job_run(name)
     try:
-        if name == "init-db":
-            path = init_db()
-            notes = str(path)
-        elif name == "collect-symbols":
+        if name == "collect-symbols":
             notes = str(run_collect_symbols())
         elif name == "collect-events":
             notes = str(run_collect_events())

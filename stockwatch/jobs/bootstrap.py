@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import pandas as pd
 
-from stocklab.collectors.events import collect_live_events
-from stocklab.collectors.liquidity import collect_priority_symbols
-from stocklab.collectors.market import collect_index_prices, collect_market_prices
-from stocklab.collectors.symbols import collect_symbols
-from stocklab.config import get_settings
-from stocklab.storage.db import init_db
-from stocklab.storage.repository import StockLabRepository
+from stockwatch.collectors.events import collect_live_events
+from stockwatch.collectors.liquidity import collect_priority_symbols
+from stockwatch.collectors.market import collect_index_prices, collect_market_prices
+from stockwatch.collectors.symbols import collect_symbols
+from stockwatch.config import get_settings
+from stockwatch.storage.db import init_db
+from stockwatch.storage.repository import StockWatchRepository
 
 
 def run_collect_all() -> dict[str, int]:
@@ -25,7 +25,7 @@ def run_collect_all() -> dict[str, int]:
 
 def run_collect_symbols() -> dict[str, int]:
     init_db()
-    repo = StockLabRepository()
+    repo = StockWatchRepository()
     symbols = collect_symbols()
     repo.replace_symbols(symbols)
     return {"symbols": len(symbols)}
@@ -33,7 +33,7 @@ def run_collect_symbols() -> dict[str, int]:
 
 def run_collect_events() -> dict[str, int]:
     init_db()
-    repo = StockLabRepository()
+    repo = StockWatchRepository()
     repo.purge_non_live_seed_events()
 
     symbols = repo.get_symbols()
@@ -58,7 +58,7 @@ def run_collect_events() -> dict[str, int]:
 
 def run_collect_market() -> dict[str, int]:
     init_db()
-    repo = StockLabRepository()
+    repo = StockWatchRepository()
     settings = get_settings()
 
     symbols = repo.get_symbols()
@@ -88,7 +88,7 @@ def run_collect_market() -> dict[str, int]:
     }
 
 
-def _refresh_event_yields(repo: StockLabRepository, market_prices: pd.DataFrame) -> int:
+def _refresh_event_yields(repo: StockWatchRepository, market_prices: pd.DataFrame) -> int:
     active_events = repo.get_active_events()
     if active_events.empty or market_prices.empty:
         return 0

@@ -4,6 +4,8 @@ __pycache__/
 *.pyc
 
 data/stocklab.db
+data/stockwatch.db
 
-stocklab.egg-info/
+*.egg-info/
+*.egg-info.legacy/
 .streamlit/

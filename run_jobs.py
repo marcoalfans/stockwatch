@@ -2,16 +2,16 @@ from __future__ import annotations
 
 import argparse
 
-from stocklab.jobs.runner import run_job
-from stocklab.storage.db import init_db
-from stocklab.utils.logging import configure_logging
+from stockwatch.jobs.runner import run_job
+from stockwatch.storage.db import init_db
+from stockwatch.utils.logging import configure_logging
 
 
 def main() -> None:
     configure_logging()
     init_db()
 
-    parser = argparse.ArgumentParser(description="StockLab job runner")
+    parser = argparse.ArgumentParser(description="StockWatch job runner")
     parser.add_argument(
         "job",
         choices=[

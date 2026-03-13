@@ -1,6 +1,6 @@
-# StockLab
+# StockWatch
 
-StockLab sekarang direvisi menjadi `Telegram-based IHSG Alert Engine`, bukan dashboard saham generik. Fokus produk adalah event penting, reminder, watchlist alert, unusual activity, dan ringkasan pasar yang dikirim otomatis ke Telegram.
+StockWatch sekarang direvisi menjadi `Telegram-based IHSG Alert Engine`, bukan dashboard saham generik. Fokus produk adalah event penting, reminder, watchlist alert, unusual activity, dan ringkasan pasar yang dikirim otomatis ke Telegram.
 
 ## Core workflow
 
@@ -62,14 +62,22 @@ StockLab sekarang direvisi menjadi `Telegram-based IHSG Alert Engine`, bukan das
 - `docs/telegram-alert-engine.md`: desain revisi total sistem
 - `streamlit_app.py`: admin panel ringan
 - `run_jobs.py`: CLI runner untuk init, collect, summary, scheduler
-- `stocklab/config/`: settings dan env
-- `stocklab/storage/`: koneksi DB, schema, repository
-- `stocklab/collectors/`: ingestion event dan market snapshot
-- `stocklab/parsers/`: normalisasi event
-- `stocklab/signals/`: dividend reminder, watchlist rules, unusual activity, summary builder
-- `stocklab/notifiers/`: formatter dan Telegram sender
-- `stocklab/jobs/`: job runner terjadwal
+- `main.py`: single launcher untuk `bootstrap`, `worker`, `bot`, `ops`, `admin`, dan `all-in-one`
+- `stockwatch/config/`: settings dan env
+- `stockwatch/storage/`: koneksi DB, schema, repository
+- `stockwatch/collectors/`: ingestion event dan market snapshot
+- `stockwatch/parsers/`: normalisasi event
+- `stockwatch/signals/`: dividend reminder, watchlist rules, unusual activity, summary builder
+- `stockwatch/notifiers/`: formatter dan Telegram sender
+- `stockwatch/bot/`: Telegram command bot dan inline menu
+- `stockwatch/jobs/`: job runner terjadwal
+- `stockwatch/utils/`: helpers tanggal, logging, retry, dan watchlist rules
 - `data/`: bootstrap symbol master, corporate action seed, watchlist rule config
+
+Catatan:
+- branding produk sudah `StockWatch`
+- package Python internal sekarang juga sudah `stockwatch`
+- folder legacy dashboard lama sudah dibuang dari tree aktif
 
 ## Menjalankan
 
@@ -176,8 +184,8 @@ python main.py --mode all-in-one
 
 Untuk production yang lebih rapi, gunakan `systemd` dan biasanya pisahkan:
 
-- `stocklab-worker`: `python main.py --mode worker`
-- `stocklab-admin`: `python main.py --mode admin --port 8501`
+- `stockwatch-worker`: `python main.py --mode worker`
+- `stockwatch-admin`: `python main.py --mode admin --port 8501`
 
 `all-in-one` saya sediakan untuk kemudahan single-command, tetapi secara operasional 2 service tetap lebih kuat karena restart dan observability lebih bersih.
 

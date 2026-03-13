@@ -1,8 +1,8 @@
-# StockLab Telegram Alert Engine
+# StockWatch Telegram Alert Engine
 
 ## 1. Ringkasan revisi dari sistem lama ke sistem baru
 
-Sistem lama berangkat dari paradigma dashboard analisa saham umum. Revisi ini mengubah StockLab menjadi mesin alert Telegram yang memonitor event dan sinyal penting, lalu hanya mengirim informasi yang actionable.
+Sistem lama berangkat dari paradigma dashboard analisa saham umum. Revisi ini mengubah StockWatch menjadi mesin alert Telegram yang memonitor event dan sinyal penting, lalu hanya mengirim informasi yang actionable.
 
 Perubahan inti:
 
@@ -19,9 +19,9 @@ Perubahan inti:
 - Nilai harian rendah jika tidak ada alert/action
 - Kompleksitas UI tinggi, tetapi urgensi keputusan tidak meningkat signifikan
 
-## 3. Definisi produk baru: StockLab Telegram Alert Engine
+## 3. Definisi produk baru: StockWatch Telegram Alert Engine
 
-StockLab adalah sistem pemantau saham Indonesia yang:
+StockWatch adalah sistem pemantau saham Indonesia yang:
 
 - mengumpulkan event penting
 - mengevaluasi signal penting pada watchlist
@@ -75,7 +75,7 @@ Komponen:
 ## 6. Struktur folder project
 
 ```text
-stocklab/
+stockwatch/
 ├── docs/
 │   └── telegram-alert-engine.md
 ├── data/
@@ -83,20 +83,26 @@ stocklab/
 │   ├── bootstrap_dividends.csv
 │   ├── bootstrap_corporate_actions.csv
 │   └── watchlist_rules.json
-├── stocklab/
+├── stockwatch/
+│   ├── bot/
 │   ├── collectors/
+│   ├── config/
+│   ├── jobs/
+│   ├── notifiers/
 │   ├── parsers/
 │   ├── signals/
-│   ├── notifiers/
-│   ├── jobs/
 │   ├── storage/
-│   ├── config/
 │   └── utils/
+├── main.py
 ├── streamlit_app.py
 ├── run_jobs.py
 ├── .env.example
 └── pyproject.toml
 ```
+
+Catatan:
+- nama produk adalah `StockWatch`
+- package internal juga sudah bernama `stockwatch`
 
 ## 7. Data model / database schema
 
@@ -344,13 +350,13 @@ Rules:
 
 ## 18. Skeleton code project
 
-Skeleton code sudah disiapkan di package `stocklab`.
+Skeleton code sudah disiapkan di package `stockwatch`.
 
 ## 19. Contoh file .env
 
 ```dotenv
-STOCKLAB_ENV=dev
-STOCKLAB_DB_PATH=data/stocklab.db
+STOCKWATCH_ENV=dev
+STOCKWATCH_DB_PATH=data/stockwatch.db
 TELEGRAM_BOT_TOKEN=replace_with_real_token
 TELEGRAM_CHAT_ID=replace_with_real_chat_id
 TELEGRAM_ENABLED=false
@@ -378,7 +384,7 @@ python run_jobs.py scheduler
 
 ## 22. Contoh fungsi kirim Telegram message
 
-Lihat `stocklab/notifiers/telegram.py`.
+Lihat `stockwatch/notifiers/telegram.py`.
 
 ## 23. Contoh data table untuk dividend events
 

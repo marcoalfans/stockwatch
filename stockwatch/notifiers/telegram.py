@@ -5,7 +5,7 @@ import time
 
 import requests
 
-from stocklab.config import get_settings
+from stockwatch.config import get_settings
 
 
 class TelegramRateLimitError(RuntimeError):

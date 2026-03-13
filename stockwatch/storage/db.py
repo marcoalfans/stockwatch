@@ -7,7 +7,7 @@ from typing import Iterator
 
 import pandas as pd
 
-from stocklab.config import get_settings
+from stockwatch.config import get_settings
 
 
 def get_db_path() -> Path:

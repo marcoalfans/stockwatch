@@ -8,14 +8,14 @@ import sys
 import time
 from pathlib import Path
 
-from stocklab.bot.commands import run_bot_listener
+from stockwatch.bot.commands import run_bot_listener
 
 
 BASE_DIR = Path(__file__).resolve().parent
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="StockLab main launcher")
+    parser = argparse.ArgumentParser(description="StockWatch main launcher")
     parser.add_argument(
         "--mode",
         choices=["worker", "bot", "ops", "admin", "all-in-one", "bootstrap"],
@@ -60,7 +60,7 @@ def main() -> None:
         _run_parallel(
             [
                 [sys.executable, "run_jobs.py", "scheduler"],
-                [sys.executable, "-c", "from stocklab.bot.commands import run_bot_listener; run_bot_listener()"],
+                [sys.executable, "-c", "from stockwatch.bot.commands import run_bot_listener; run_bot_listener()"],
             ]
         )
         return
@@ -68,7 +68,7 @@ def main() -> None:
     _run_parallel(
         [
             [sys.executable, "run_jobs.py", "scheduler"],
-            [sys.executable, "-c", "from stocklab.bot.commands import run_bot_listener; run_bot_listener()"],
+            [sys.executable, "-c", "from stockwatch.bot.commands import run_bot_listener; run_bot_listener()"],
             [
                 sys.executable,
                 "-m",
