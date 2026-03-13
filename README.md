@@ -207,6 +207,20 @@ File service siap pakai ada di:
 - `deploy/systemd/stockwatch-ops.service`
 - `deploy/systemd/stockwatch-admin.service`
 - `deploy/systemd/stockwatch-all-in-one.service`
+- `deploy/systemd/stockwatch-ops.local.service`
+- `deploy/systemd/stockwatch-admin.local.service`
+- `deploy/systemd/stockwatch-all-in-one.local.service`
+
+Arti file:
+
+- `*.service`
+  - template generic untuk deploy repo di `/opt/stockwatch`
+- `*.local.service`
+  - unit yang sudah diisi untuk host ini:
+    - `User=kac0`
+    - `Group=kali`
+    - `WorkingDirectory=/home/kac0/project/stockwatch`
+    - `ExecStart=/home/kac0/project/stockwatch/stockwatchctl ...`
 
 Sebelum dipakai, edit dulu nilai berikut sesuai server Anda:
 
@@ -240,6 +254,33 @@ Lihat log:
 sudo journalctl -u stockwatch-ops -f
 sudo journalctl -u stockwatch-admin -f
 ```
+
+### systemd untuk host ini
+
+Kalau Anda ingin langsung pakai pada host saat ini tanpa edit file service:
+
+```bash
+cd /home/kac0/project/stockwatch
+sudo cp deploy/systemd/stockwatch-ops.local.service /etc/systemd/system/stockwatch-ops.service
+sudo cp deploy/systemd/stockwatch-admin.local.service /etc/systemd/system/stockwatch-admin.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now stockwatch-ops
+sudo systemctl enable --now stockwatch-admin
+sudo systemctl status stockwatch-ops
+sudo systemctl status stockwatch-admin
+```
+
+Jika Anda ingin single-service mode di host ini:
+
+```bash
+cd /home/kac0/project/stockwatch
+sudo cp deploy/systemd/stockwatch-all-in-one.local.service /etc/systemd/system/stockwatch-all-in-one.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now stockwatch-all-in-one
+sudo systemctl status stockwatch-all-in-one
+```
+
+Jangan aktifkan `stockwatch-all-in-one` bersamaan dengan `stockwatch-ops` + `stockwatch-admin`.
 
 ## Konfigurasi Telegram
 

@@ -1,0 +1,17 @@
+[Unit]
+Description=StockWatch All-in-One Service (Local Host)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=kac0
+Group=kali
+WorkingDirectory=/home/kac0/project/stockwatch
+ExecStart=/home/kac0/project/stockwatch/stockwatchctl all-in-one
+Restart=always
+RestartSec=5
+TimeoutStopSec=20
+
+[Install]
+WantedBy=multi-user.target
